@@ -23,7 +23,8 @@ public class TestReentrantLock {
     static volatile boolean stop = false;
 
     public static void main(String[] args) throws InterruptedException, IOException {
-        learnLock();
+        //learnLock();
+        fairVsUnfair();
     }
 
     private static void learnLock() throws InterruptedException {
