@@ -26,6 +26,7 @@ public class TestThreadPoolExecutor {
                 queue,
                 r -> new Thread(r, "myThread" + c.getAndIncrement()),
                 new ThreadPoolExecutor.DiscardOldestPolicy());
+
         showState(queue, threadPool);
         threadPool.submit(new MyTask("1", 3600000));
         showState(queue, threadPool);

@@ -36,7 +36,7 @@ public class ForeverLoop {
             }
             get().debug("{}", stop);
         }).start();
-
+        
         foo();
     }
 
