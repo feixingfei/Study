@@ -1,0 +1,34 @@
+# IS-20332
+select b.mkproductcode,a.policynum,a.lapolicydofield19,a.reftranno,b.endono,b.cancelreason from (
+	select policynum,lapolicydofield19,reftranno from topic_la_policy where policystatuscd = "CANCELLED"
+) a join (
+	select p.mkproductcode,p.quotenumber,e.endono,e.cancelreason from topic_endorsement e join topic_policy_history p on e.policyid=p.policyid and p.policystatus = 'CANCELLED'
+) b on a.policynum = b.quotenumber and substring(a.reftranno,3)=b.endono ;
+
+# IS-20287
+select
+	feeid,
+	policynum,
+	lapolicycomponentfield32 declarationNo,
+	lapolicycomponentfield33 certificateNo,
+	lapolicycomponentfield1 productCode,
+	coveragenumber,
+	pasbusinessdate,
+	premiumpayingterm,
+	modalpremiumamt,
+	lapolicycomponentfield27 actualPremiumPayable,
+	lapolicycomponentfield28 endoGwp,
+	lapolicycomponentfield29 endoAr,
+	productstatuscd,
+	reftranno,
+	update_time_
+from
+	topic_la_policyproduct
+where
+	update_time_ >= "2024-01-15"
+order by
+	policynum,
+	lapolicycomponentfield33,
+	coveragenumber,
+	pasbusinessdate,
+	reftranno;
