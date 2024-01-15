@@ -135,10 +135,13 @@ select distinct fee_id,fee_id,"Fee","fee",0,now(),"1ecc5295c5de60b4af63f9375c07f
 ## ----------------------------
 
 #  ----》》 刷指定policyNo的数据 《《---- 
-#	1.先准备policyNumbers
-drop view policyNumbers;
-CREATE view policyNumbers as
-SELECT policyNo COLLATE utf8mb4_general_ci
+#	1.先准备DMS_policyNumbers
+drop table DMS_policyNumbers;
+CREATE table DMS_policyNumbers (
+	`policyNo` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL
+);
+insert into DMS_policyNumbers (policyno)
+SELECT policyNo COLLATE utf8mb4_general_ci policyNo
 FROM JSON_TABLE(  
   '["2100000086"]',  
   '$[*]'  
@@ -146,162 +149,156 @@ FROM JSON_TABLE(
     policyNo VARCHAR(50) PATH '$'  
   )  
 ) jt;
-select * from policyNumbers;
+select * from DMS_policyNumbers;
 
-# 3.直接从cdc_rec_view里面将数据插入cdc_sync_rec表
-drop view cdc_rec_view;
-select * from cdc_rec_view;
-INSERT INTO cdc_sync_rec (rec_id, ref_id, ref_class_name, ref_type, retry_times, created_at, created_by, `level`, destination)
-select * from cdc_rec_view;
-
-# 2.执行查询语句将需要同步的数据先生成为视图
+# 2.执行查询语句将需要同步的数据
 ## LA
-create view cdc_rec_view as 
+INSERT INTO cdc_sync_rec (rec_id, ref_id, ref_class_name, ref_type, retry_times, created_at, created_by, `level`, destination)
 # ma
-select distinct ma_id rec_id,ma_id ref_id,"Ma" ref_class_name,"ma" ref_type,0 retry_times,now() created_at,"1ecc5295c5de60b4af63f9375c07ff594fe0a8" created_by,8990 `level`,'S3' destination from trans_index where ma_no in (select * from policyNumbers)
+select distinct ma_id,ma_id,"Ma","ma",0,now(),"1ecc5295c5de60b4af63f9375c07ff594fe0a8",8990,'S3' from trans_index where ma_no in (select * from DMS_policyNumbers)
 union all
 # policy
-select distinct policy_id,policy_id ,"Policy","policy",0,now(),"1ecc5295c5de60b4af63f9375c07ff594fe0a8",8980,'S3' from trans_index where quote_no in (select * from policyNumbers) or quote_no in (
-	select quote_no from trans_index where ma_no in (select * from policyNumbers)
+select distinct policy_id,policy_id ,"Policy","policy",0,now(),"1ecc5295c5de60b4af63f9375c07ff594fe0a8",8980,'S3' from trans_index where quote_no in (select * from DMS_policyNumbers) or quote_no in (
+	select quote_no from trans_index where ma_no in (select * from DMS_policyNumbers)
 )
 union all
 # endo
-select distinct endo_id,endo_id ,"Endo","endo",0,now(),"1ecc5295c5de60b4af63f9375c07ff594fe0a8",8970,'S3' from trans_index where (quote_no in (select * from policyNumbers) or quote_no in (
-	select quote_no from trans_index where ma_no in (select * from policyNumbers)
+select distinct endo_id,endo_id ,"Endo","endo",0,now(),"1ecc5295c5de60b4af63f9375c07ff594fe0a8",8970,'S3' from trans_index where (quote_no in (select * from DMS_policyNumbers) or quote_no in (
+	select quote_no from trans_index where ma_no in (select * from DMS_policyNumbers)
 )) and endo_id is not null
 union all
 # maDeclaration
 select distinct declaration_id,declaration_id ,"MaDeclaration","ma_declaration",0,now(),"1ecc5295c5de60b4af63f9375c07ff594fe0a8",8940,'S3' from ma_declaration where ma_id  in (
-	select ma_id from trans_index where ma_no in (select * from policyNumbers)
+	select ma_id from trans_index where ma_no in (select * from DMS_policyNumbers)
 )
 union all
 # policyFeeBillingschedule
 select distinct schedule_id,schedule_id,"PolicyFeeBillingSchedule","policy_fee_billing_schedule",0,now(),"1ecc5295c5de60b4af63f9375c07ff594fe0a8",8935,'S3' from policy_fee_billing_schedule where 
-	ma_id in (select ma_id from trans_index where ma_no in (select * from policyNumbers)) or policy_id in (select policy_id from trans_index where quote_no in (select * from policyNumbers))
+	ma_id in (select ma_id from trans_index where ma_no in (select * from DMS_policyNumbers)) or policy_id in (select policy_id from trans_index where quote_no in (select * from DMS_policyNumbers))
 union all 
 # billingschedule
 select distinct schedule_id,schedule_id,"BillingSchedule","billing_schedule",0,now(),"1ecc5295c5de60b4af63f9375c07ff594fe0a8",8930,'S3' from billing_schedule where ref_id in (
 	select distinct schedule_id from policy_fee_billing_schedule where 
-	ma_id in (select ma_id from trans_index where ma_no in (select * from policyNumbers)) or policy_id in (select policy_id from trans_index where quote_no in (select * from policyNumbers))
+	ma_id in (select ma_id from trans_index where ma_no in (select * from DMS_policyNumbers)) or policy_id in (select policy_id from trans_index where quote_no in (select * from DMS_policyNumbers))
 )
 union all
 # lifepolicyrenewal
 select distinct policy_renewal_id,policy_renewal_id,"LifePolicyRenewal","life_policy_renewal",0,now(),"1ecc5295c5de60b4af63f9375c07ff594fe0a8",8920,'S3' from life_policy_renewal where policy_id in (
-	select policy_id from trans_index where quote_no in (select * from policyNumbers)
+	select policy_id from trans_index where quote_no in (select * from DMS_policyNumbers)
 )
 union all
 # coareq
 select distinct req_id,req_id,"CoaReq","coa_req",0,now(),"1ecc5295c5de60b4af63f9375c07ff594fe0a8",8910,'S3' from coa_req where req_id in (
 	select distinct coa_req_id from coa_req_item where ref_id in (
-		select policy_id from trans_index where quote_no in (select * from policyNumbers) union
-		select ma_id from trans_index where ma_no in (select * from policyNumbers)
+		select policy_id from trans_index where quote_no in (select * from DMS_policyNumbers) union
+		select ma_id from trans_index where ma_no in (select * from DMS_policyNumbers)
 	)
 ) 
 union all
 # coareqitem
 select distinct item_id,item_id,"CoaReqItem","coa_req_item",0,now(),"1ecc5295c5de60b4af63f9375c07ff594fe0a8",8900,'S3' from coa_req_item where ref_id in (
-	select policy_id from trans_index where quote_no in (select * from policyNumbers) union
-	select ma_id from trans_index where ma_no in (select * from policyNumbers)
+	select policy_id from trans_index where quote_no in (select * from DMS_policyNumbers) union
+	select ma_id from trans_index where ma_no in (select * from DMS_policyNumbers)
 )
 union all
 # bill
-select distinct bill_id,bill_id,"Bill","bill",0,now(),"1ecc5295c5de60b4af63f9375c07ff594fe0a8",5990,'S3' from bill where policy_no in (select * from policyNumbers) or ma_no in (select * from policyNumbers)
+select distinct bill_id,bill_id,"Bill","bill",0,now(),"1ecc5295c5de60b4af63f9375c07ff594fe0a8",5990,'S3' from bill where policy_no in (select * from DMS_policyNumbers) or ma_no in (select * from DMS_policyNumbers)
 union all
 # fee
-select distinct fee_id,fee_id,"Fee","fee",0,now(),"1ecc5295c5de60b4af63f9375c07ff594fe0a8",5980,'S3' from fee where policy_no in (select * from policyNumbers) or ma_no in (select * from policyNumbers)
+select distinct fee_id,fee_id,"Fee","fee",0,now(),"1ecc5295c5de60b4af63f9375c07ff594fe0a8",5980,'S3' from fee where policy_no in (select * from DMS_policyNumbers) or ma_no in (select * from DMS_policyNumbers)
 union all
 # collect
 select distinct collect_id,collect_id,"Collection","collect",0,now(),"1ecc5295c5de60b4af63f9375c07ff594fe0a8",5970,'S3' from `collect` where collect_id in (
 	select distinct collect_id from collect_item where bill_id in (
-		select distinct bill_id from bill where policy_no in (select * from policyNumbers) or ma_no in (select * from policyNumbers)
+		select distinct bill_id from bill where policy_no in (select * from DMS_policyNumbers) or ma_no in (select * from DMS_policyNumbers)
 	)
 )
 union all
 # collectItem
 select distinct item_id,item_id,"CollectionItem","collect_item",0,now(),"1ecc5295c5de60b4af63f9375c07ff594fe0a8",5960,'S3' from collect_item where bill_id in (
-	select distinct bill_id from bill where policy_no in (select * from policyNumbers) or ma_no in (select * from policyNumbers)
+	select distinct bill_id from bill where policy_no in (select * from DMS_policyNumbers) or ma_no in (select * from DMS_policyNumbers)
 )
 union all
 # payment
 select distinct payment_id,payment_id,"Payment","payment",0,now(),"1ecc5295c5de60b4af63f9375c07ff594fe0a8",5950,'S3' from payment where payment_id in (
 	select distinct payment_id from payment_item where bill_id in (
-		select distinct bill_id from bill where policy_no in (select * from policyNumbers) or ma_no in (select * from policyNumbers)
+		select distinct bill_id from bill where policy_no in (select * from DMS_policyNumbers) or ma_no in (select * from DMS_policyNumbers)
 	)
 )
 union all
 # paymentItem
 select distinct item_id,item_id,"PaymentItem","payment_item",0,now(),"1ecc5295c5de60b4af63f9375c07ff594fe0a8",5940,'S3' from payment_item where bill_id in (
-	select distinct bill_id from bill where policy_no in (select * from policyNumbers) or ma_no in (select * from policyNumbers)
+	select distinct bill_id from bill where policy_no in (select * from DMS_policyNumbers) or ma_no in (select * from DMS_policyNumbers)
 )
 union all
 # offset
 select distinct offset_id,offset_id,"Offset","off_set",0,now(),"1ecc5295c5de60b4af63f9375c07ff594fe0a8",5930,'S3' from off_set where offset_id in (
 	select distinct offset_id from offset_item where from_bill_id in (
-		select distinct bill_id from bill where policy_no in (select * from policyNumbers) or ma_no in (select * from policyNumbers)
+		select distinct bill_id from bill where policy_no in (select * from DMS_policyNumbers) or ma_no in (select * from DMS_policyNumbers)
 	) or to_bill_id in (
-		select distinct bill_id from bill where policy_no in (select * from policyNumbers) or ma_no in (select * from policyNumbers)
+		select distinct bill_id from bill where policy_no in (select * from DMS_policyNumbers) or ma_no in (select * from DMS_policyNumbers)
 	)
 )
 union all
 # offsetItem
 select distinct item_id,item_id,"OffsetItem","offset_item",0,now(),"1ecc5295c5de60b4af63f9375c07ff594fe0a8",5920,'S3' from offset_item where from_bill_id in (
-	select distinct bill_id from bill where policy_no in (select * from policyNumbers) or ma_no in (select * from policyNumbers)
+	select distinct bill_id from bill where policy_no in (select * from DMS_policyNumbers) or ma_no in (select * from DMS_policyNumbers)
 ) or to_bill_id in (
-	select distinct bill_id from bill where policy_no in (select * from policyNumbers) or ma_no in (select * from policyNumbers)
+	select distinct bill_id from bill where policy_no in (select * from DMS_policyNumbers) or ma_no in (select * from DMS_policyNumbers)
 );
 
 
 ## DM and RR
-create view cdc_rec_view as
+INSERT INTO cdc_sync_rec (rec_id, ref_id, ref_class_name, ref_type, retry_times, created_at, created_by, `level`, destination)
 # ma
-select distinct ma_id rec_id,ma_id ref_id,"Ma" ref_class_name,"ma" ref_type,0 retry_times,now() created_at,"1ecc5295c5de60b4af63f9375c07ff594fe0a8" created_by,8990 `level`,'S3' destination from trans_index where ma_no in (select * from policyNumbers)
+select distinct ma_id rec_id,ma_id ref_id,"Ma" ref_class_name,"ma" ref_type,0 retry_times,now() created_at,"1ecc5295c5de60b4af63f9375c07ff594fe0a8" created_by,8990 `level`,'S3' destination from trans_index where ma_no in (select * from DMS_policyNumbers)
 union all
 # policy
-select distinct policy_id,policy_id ,"Policy","policy",0,now(),"1ecc5295c5de60b4af63f9375c07ff594fe0a8",8980,'S3' from trans_index where quote_no in (select * from policyNumbers) or quote_no in (
-	select quote_no from trans_index where ma_no in (select * from policyNumbers)
+select distinct policy_id,policy_id ,"Policy","policy",0,now(),"1ecc5295c5de60b4af63f9375c07ff594fe0a8",8980,'S3' from trans_index where quote_no in (select * from DMS_policyNumbers) or quote_no in (
+	select quote_no from trans_index where ma_no in (select * from DMS_policyNumbers)
 )
 union all
 # endo
-select distinct endo_id,endo_id ,"Endo","endo",0,now(),"1ecc5295c5de60b4af63f9375c07ff594fe0a8",8970,'S3' from trans_index where (quote_no in (select * from policyNumbers) or quote_no in (
-	select quote_no from trans_index where ma_no in (select * from policyNumbers)
+select distinct endo_id,endo_id ,"Endo","endo",0,now(),"1ecc5295c5de60b4af63f9375c07ff594fe0a8",8970,'S3' from trans_index where (quote_no in (select * from DMS_policyNumbers) or quote_no in (
+	select quote_no from trans_index where ma_no in (select * from DMS_policyNumbers)
 )) and endo_id is not null
 union all
 # maDeclaration
 select distinct declaration_id,declaration_id ,"MaDeclaration","ma_declaration",0,now(),"1ecc5295c5de60b4af63f9375c07ff594fe0a8",8940,'S3' from ma_declaration where ma_id  in (
-	select ma_id from trans_index where ma_no in (select * from policyNumbers)
+	select ma_id from trans_index where ma_no in (select * from DMS_policyNumbers)
 )
 union all 
 # policyFeeBillingschedule
 select distinct schedule_id,schedule_id,"PolicyFeeBillingSchedule","policy_fee_billing_schedule",0,now(),"1ecc5295c5de60b4af63f9375c07ff594fe0a8",8935,'S3' from policy_fee_billing_schedule where 
-	ma_id in (select ma_id from trans_index where ma_no in (select * from policyNumbers)) or policy_id in (select policy_id from trans_index where quote_no in (select * from policyNumbers))
+	ma_id in (select ma_id from trans_index where ma_no in (select * from DMS_policyNumbers)) or policy_id in (select policy_id from trans_index where quote_no in (select * from DMS_policyNumbers))
 union all 
 # billingschedule
 select distinct schedule_id,schedule_id,"BillingSchedule","billing_schedule",0,now(),"1ecc5295c5de60b4af63f9375c07ff594fe0a8",8930,'S3' from billing_schedule where ref_id in (
 	select distinct schedule_id from policy_fee_billing_schedule where 
-	ma_id in (select ma_id from trans_index where ma_no in (select * from policyNumbers)) or policy_id in (select policy_id from trans_index where quote_no in (select * from policyNumbers))
+	ma_id in (select ma_id from trans_index where ma_no in (select * from DMS_policyNumbers)) or policy_id in (select policy_id from trans_index where quote_no in (select * from DMS_policyNumbers))
 )
 union all
 # lifepolicyrenewal
 select distinct policy_renewal_id,policy_renewal_id,"LifePolicyRenewal","life_policy_renewal",0,now(),"1ecc5295c5de60b4af63f9375c07ff594fe0a8",8920,'S3' from life_policy_renewal where policy_id in (
-	select policy_id from trans_index where quote_no in (select * from policyNumbers)
+	select policy_id from trans_index where quote_no in (select * from DMS_policyNumbers)
 )
 union all
 # coareq
 select distinct req_id,req_id,"CoaReq","coa_req",0,now(),"1ecc5295c5de60b4af63f9375c07ff594fe0a8",8910,'S3' from coa_req where req_id in (
 	select distinct coa_req_id from coa_req_item where ref_id in (
-		select policy_id from trans_index where quote_no in (select * from policyNumbers) union
-		select ma_id from trans_index where ma_no in (select * from policyNumbers)
+		select policy_id from trans_index where quote_no in (select * from DMS_policyNumbers) union
+		select ma_id from trans_index where ma_no in (select * from DMS_policyNumbers)
 	)
 ) 
 union all
 # coareqitem
 select distinct item_id,item_id,"CoaReqItem","coa_req_item",0,now(),"1ecc5295c5de60b4af63f9375c07ff594fe0a8",8900,'S3' from coa_req_item where ref_id in (
-	select policy_id from trans_index where quote_no in (select * from policyNumbers) union
-	select ma_id from trans_index where ma_no in (select * from policyNumbers)
+	select policy_id from trans_index where quote_no in (select * from DMS_policyNumbers) union
+	select ma_id from trans_index where ma_no in (select * from DMS_policyNumbers)
 )
 union all
 # bill
-select distinct bill_id,bill_id,"Bill","bill",0,now(),"1ecc5295c5de60b4af63f9375c07ff594fe0a8",5990,'S3' from bill where policy_no in (select * from policyNumbers) or ma_no in (select * from policyNumbers)
+select distinct bill_id,bill_id,"Bill","bill",0,now(),"1ecc5295c5de60b4af63f9375c07ff594fe0a8",5990,'S3' from bill where policy_no in (select * from DMS_policyNumbers) or ma_no in (select * from DMS_policyNumbers)
 union all
 # fee
-select distinct fee_id,fee_id,"Fee","fee",0,now(),"1ecc5295c5de60b4af63f9375c07ff594fe0a8",5980,'S3' from fee where policy_no in (select * from policyNumbers) or ma_no in (select * from policyNumbers);
+select distinct fee_id,fee_id,"Fee","fee",0,now(),"1ecc5295c5de60b4af63f9375c07ff594fe0a8",5980,'S3' from fee where policy_no in (select * from DMS_policyNumbers) or ma_no in (select * from DMS_policyNumbers);
