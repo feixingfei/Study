@@ -65,3 +65,14 @@
 2000007421R1
 2000019752
 2000019752R1
+
+
+PFA updated file Observations_BIX_MigrationData_v0.27.xlsx.
+
+Sean Zhao : Please address issues against BIX name.
+
+Manoj Date : Kindly look into issues for C2L. Policy term issue#38 is open for quite a time now. Kindly address it on priority.
+
+ 
+
+CC : Ajay Shinde MS Prasad [IT] Hong Sao Wen Lu Iris 
