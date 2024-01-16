@@ -3,24 +3,20 @@ set @startTime='2023-06-01 00:00:00';
 set @endTime='2023-12-01 00:00:00';
 select @startTime,@endTime;
 
-select * from topic_dmpolicyheader;
 select policynum from topic_dmpolicyheader where issuedt not between @startTime and @endTime order by issuedt;
-delete from topic_dmpolicyproductdetails where policynum in (select policynum from topic_dmpolicyheader where issuedt not between @startTime and @endTime);
-delete from topic_dmpolicyclientdetails where policynum in (select policynum from topic_dmpolicyheader where issuedt not between @startTime and @endTime);
-delete from topic_dmpremium where policynum in (select policynum from topic_dmpolicyheader where issuedt not between @startTime and @endTime);
-delete from topic_dmcommission where policynum in (select policynum from topic_dmpolicyheader where issuedt not between @startTime and @endTime);
-delete from topic_dmpolicyhierarchy where policynum in (select policynum from topic_dmpolicyheader where issuedt not between @startTime and @endTime);
+delete from topic_dmpolicyheader where issuedt not between @startTime and @endTime;
 
-select * from topic_dmpolicyproductdetails where policynum in (select policynum from topic_dmpolicyheader where issuedt not between @startTime and @endTime);
-select * from topic_dmpolicyclientdetails where policynum in (select policynum from topic_dmpolicyheader where issuedt not between @startTime and @endTime);
-select * from topic_dmpremium where policynum in (select policynum from topic_dmpolicyheader where issuedt not between @startTime and @endTime);
-select * from topic_dmcommission where policynum in (select policynum from topic_dmpolicyheader where issuedt not between @startTime and @endTime);
-select * from topic_dmpolicyhierarchy where policynum in (select policynum from topic_dmpolicyheader where issuedt not between @startTime and @endTime);
+delete from topic_dmpolicyproductdetails where policynum not in (select distinct policynum from topic_dmpolicyheader);
+delete from topic_dmpolicyclientdetails where policynum not in (select distinct policynum from topic_dmpolicyheader);
+delete from topic_dmpremium where policynum not in (select distinct policynum from topic_dmpolicyheader);
+delete from topic_dmcommission where policynum not in (select distinct policynum from topic_dmpolicyheader);
+delete from topic_dmpolicyhierarchy where policynum not in (select distinct policynum from topic_dmpolicyheader);
 
-select policynum from topic_dmpolicyhierarchy where policynum not in (select distinct policynum from topic_dmcommission);
-delete from topic_dmpolicyhierarchy where policynum not in (select distinct policynum from topic_dmcommission);
-
-delete from topic_dmpolicyheader where issuedt not between @startTime and @endTime order by issuedt;
+select * from topic_dmpolicyproductdetails where policynum not in (select distinct policynum from topic_dmpolicyheader);
+select * from topic_dmpolicyclientdetails where policynum not in (select distinct policynum from topic_dmpolicyheader);
+select * from topic_dmpremium where policynum not in (select distinct policynum from topic_dmpolicyheader);
+select * from topic_dmcommission where policynum not in (select distinct policynum from topic_dmpolicyheader);
+select * from topic_dmpolicyhierarchy where policynum not in (select distinct policynum from topic_dmpolicyheader);
 
 select "topic_dmpolicyheader",count(*) from topic_dmpolicyheader union all
 select "topic_dmpolicyproductdetails",count(*) from topic_dmpolicyproductdetails union all
