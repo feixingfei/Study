@@ -302,3 +302,19 @@ select distinct bill_id,bill_id,"Bill","bill",0,now(),"1ecc5295c5de60b4af63f9375
 union all
 # fee
 select distinct fee_id,fee_id,"Fee","fee",0,now(),"1ecc5295c5de60b4af63f9375c07ff594fe0a8",5980,'S3' from fee where policy_no in (select * from DMS_policyNumbers) or ma_no in (select * from DMS_policyNumbers);
+
+# DMS-meta
+select * from trigger_event order by created_at desc;
+select * from trigger_table order by last_modified_at desc;
+
+select * from change_data_json;
+select * from change_data_json_history order by last_modified_at desc;
+
+select count(*) from change_data_record;
+select count(*) from change_data_json;
+select count(*) from scheduled_task; 
+
+select * from data_sources;
+select * from collector_module_config;
+select * from collector_model_config;
+select * from collector_table_config;
