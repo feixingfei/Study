@@ -84,14 +84,14 @@ select distinct item_id,item_id,"CoaReqItem","coa_req_item",0,now(),"1ecc5295c5d
 # bill
 select distinct bill_id,bill_id,"Bill","bill",0,now(),"1ecc5295c5de60b4af63f9375c07ff594fe0a8",5990,'S3' from bill where bill_type in ('DIRECT_PREM','DIRECT_COMM','OR_COMM','INCENTIVE') and created_at between @startTime and @endTime union all
 # fee
-select distinct fee_id,fee_id,"Fee","fee",0,now(),"1ecc5295c5de60b4af63f9375c07ff594fe0a8",5980,'S3' from fee where fee_type = "GWP" and created_at between @startTime and @endTime;
+select distinct fee_id,fee_id,"Fee","fee",0,now(),"1ecc5295c5de60b4af63f9375c07ff594fe0a8",5980,'S3' from fee where fee_type in ('GWP','BASIC_COMM','OR_COMM','INCENTIVE') and created_at between @startTime and @endTime;
 
 # DM 刷触发点数据
 INSERT INTO cdc_sync_rec (rec_id, ref_id, ref_class_name, ref_type, retry_times, created_at, created_by, `level`, destination)
 # bill
 select distinct bill_id,bill_id,"Bill","bill",0,now(),"1ecc5295c5de60b4af63f9375c07ff594fe0a8",5990,'S3' from bill where bill_type in ('DIRECT_PREM','DIRECT_COMM','OR_COMM','INCENTIVE') and created_at between @startTime and @endTime union all
 # fee
-select distinct fee_id,fee_id,"Fee","fee",0,now(),"1ecc5295c5de60b4af63f9375c07ff594fe0a8",5980,'S3' from fee where fee_type = "GWP" and created_at between @startTime and @endTime;
+select distinct fee_id,fee_id,"Fee","fee",0,now(),"1ecc5295c5de60b4af63f9375c07ff594fe0a8",5980,'S3' from fee where fee_type in ('GWP','BASIC_COMM','OR_COMM','INCENTIVE') and created_at between @startTime and @endTime;
 
 
 
