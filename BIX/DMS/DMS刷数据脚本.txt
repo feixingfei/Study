@@ -1,9 +1,29 @@
+# DMS-meta
+select * from trigger_event order by created_at desc;
+select * from trigger_table order by last_modified_at desc;
+
+select * from change_data_json;
+select * from change_data_json_history order by last_modified_at desc;
+
+select count(*) from change_data_record;
+select count(*) from change_data_json;
+select count(*) from scheduled_task; 
+
+select * from data_sources;
+select * from collector_module_config;
+select * from collector_model_config;
+select * from collector_table_config;
+
+# core-system
 select count(*) from cdc_sync_rec;
 select * from cdc_sync_rec;
 delete from cdc_sync_rec where ref_class_name = "ri_risk_accu_trans";
 truncate table cdc_sync_rec; 
 select * from cdc_sync_rec_log;
 truncate table cdc_sync_rec_log; 
+
+show variables like "%_buffer%"; 
+SET GLOBAL innodb_buffer_pool_size=1073741824;
 
 # 全量刷Sc
 INSERT INTO cdc_sync_rec (rec_id, ref_id, ref_class_name, ref_type, retry_times, created_at, created_by, `level`, destination)
@@ -21,6 +41,8 @@ select distinct ma_id,ma_id ,"Ma","ma",0,now(),"1ecc5295c5de60b4af63f9375c07ff59
 select distinct policy_id,policy_id,"Policy","policy",0,now(),"1ecc5295c5de60b4af63f9375c07ff594fe0a8",8980,'S3' from policy where created_at between @startTime and @endTime union all
 # endo
 select distinct endo_id,endo_id,"Endo","endo",0,now(),"1ecc5295c5de60b4af63f9375c07ff594fe0a8",8970,'S3' from endo where created_at between @startTime and @endTime union all
+# maEndo
+select distinct endo_id,endo_id,"MaEndo","ma_endo",0,now(),"1ecc5295c5de60b4af63f9375c07ff594fe0a8",8965,'S3' from ma_endo where created_at between @startTime and @endTime union all
 # maDeclaration
 select distinct declaration_id,declaration_id,"MaDeclaration","ma_declaration",0,now(),"1ecc5295c5de60b4af63f9375c07ff594fe0a8",8940,'S3' from ma_declaration where created_at between @startTime and @endTime union all
 # policyFeeBillingschedule
@@ -94,7 +116,6 @@ select distinct bill_id,bill_id,"Bill","bill",0,now(),"1ecc5295c5de60b4af63f9375
 select distinct fee_id,fee_id,"Fee","fee",0,now(),"1ecc5295c5de60b4af63f9375c07ff594fe0a8",5980,'S3' from fee where fee_type in ('GWP','BASIC_COMM','OR_COMM','INCENTIVE') and created_at between @startTime and @endTime;
 
 
-
 # RR 全量刷数据
 INSERT INTO cdc_sync_rec (rec_id, ref_id, ref_class_name, ref_type, retry_times, created_at, created_by, `level`, destination)
 # ma
@@ -166,6 +187,9 @@ union all
 select distinct endo_id,endo_id ,"Endo","endo",0,now(),"1ecc5295c5de60b4af63f9375c07ff594fe0a8",8970,'S3' from trans_index where (quote_no in (select * from DMS_policyNumbers) or quote_no in (
 	select quote_no from trans_index where ma_no in (select * from DMS_policyNumbers)
 )) and endo_id is not null
+union all
+# maEndo
+select distinct endo_id,endo_id,"MaEndo","ma_endo",0,now(),"1ecc5295c5de60b4af63f9375c07ff594fe0a8",8965,'S3' from ma_endo where ma_id in (select ma_id from trans_index where ma_no in (select * from DMS_policyNumbers))
 union all
 # maDeclaration
 select distinct declaration_id,declaration_id ,"MaDeclaration","ma_declaration",0,now(),"1ecc5295c5de60b4af63f9375c07ff594fe0a8",8940,'S3' from ma_declaration where ma_id  in (
@@ -302,19 +326,3 @@ select distinct bill_id,bill_id,"Bill","bill",0,now(),"1ecc5295c5de60b4af63f9375
 union all
 # fee
 select distinct fee_id,fee_id,"Fee","fee",0,now(),"1ecc5295c5de60b4af63f9375c07ff594fe0a8",5980,'S3' from fee where policy_no in (select * from DMS_policyNumbers) or ma_no in (select * from DMS_policyNumbers);
-
-# DMS-meta
-select * from trigger_event order by created_at desc;
-select * from trigger_table order by last_modified_at desc;
-
-select * from change_data_json;
-select * from change_data_json_history order by last_modified_at desc;
-
-select count(*) from change_data_record;
-select count(*) from change_data_json;
-select count(*) from scheduled_task; 
-
-select * from data_sources;
-select * from collector_module_config;
-select * from collector_model_config;
-select * from collector_table_config;
