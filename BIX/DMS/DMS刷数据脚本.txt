@@ -74,6 +74,16 @@ select distinct item_id,item_id,"OffsetItem","offset_item",0,now(),"1ecc5295c5de
 
 # LA 刷触发点数据
 INSERT INTO cdc_sync_rec (rec_id, ref_id, ref_class_name, ref_type, retry_times, created_at, created_by, `level`, destination)
+# ma
+select distinct ma_id,ma_id ,"Ma","ma",0,now(),"1ecc5295c5de60b4af63f9375c07ff594fe0a8",8990,'S3' from ma where created_at between @startTime and @endTime union all
+# endo
+select distinct endo_id,endo_id,"Endo","endo",0,now(),"1ecc5295c5de60b4af63f9375c07ff594fe0a8",8970,'S3' from endo where created_at between @startTime and @endTime union all
+# maEndo
+select distinct endo_id,endo_id,"MaEndo","ma_endo",0,now(),"1ecc5295c5de60b4af63f9375c07ff594fe0a8",8965,'S3' from ma_endo where created_at between @startTime and @endTime union all
+# maDeclaration
+select distinct declaration_id,declaration_id,"MaDeclaration","ma_declaration",0,now(),"1ecc5295c5de60b4af63f9375c07ff594fe0a8",8940,'S3' from ma_declaration where created_at between @startTime and @endTime union all
+# coareqitem
+select distinct item_id,item_id,"CoaReqItem","coa_req_item",0,now(),"1ecc5295c5de60b4af63f9375c07ff594fe0a8",8900,'S3' from coa_req_item where created_at between @startTime and @endTime union all
 # fee
 select distinct fee_id,fee_id,"Fee","fee",0,now(),"1ecc5295c5de60b4af63f9375c07ff594fe0a8",5980,'S3' from fee where fee_type = "GWP" and created_at between @startTime and @endTime union all
 # collectItem
