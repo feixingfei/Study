@@ -342,3 +342,8 @@ POST /sandbox/incrementalDataMappingDate/adjust
 {
     "effDate": "10/11/2020"
 }
+
+select dc.premiumreferencenum,dc.dcSumANP,dp.dpSumANP
+from (select premiumreferencenum,sum(dncnanp) dcSumANP from topic_dmcommission group by premiumreferencenum) dc
+join (select premiumreferencenum,sum(dncnanp) dpSumANP from topic_dmpremium group by premiumreferencenum) dp
+on dc.premiumreferencenum = dp.premiumreferencenum;
