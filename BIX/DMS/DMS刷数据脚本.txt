@@ -337,8 +337,8 @@ union all
 # fee
 select distinct fee_id,fee_id,"Fee","fee",0,now(),"1ecc5295c5de60b4af63f9375c07ff594fe0a8",5980,'S3' from fee where policy_no in (select * from DMS_policyNumbers) or ma_no in (select * from DMS_policyNumbers);
 
-GET /sandbox/list/incrementalDataMappingDate/config
-POST /sandbox/incrementalDataMappingDate/adjust
+GET https://apibusiness3.uat.income.com.sg/sandbox/list/incrementalDataMappingDate/config
+POST https://apibusiness3.uat.income.com.sg/sandbox/incrementalDataMappingDate/adjust
 {
     "effDate": "10/11/2020"
 }
