@@ -62,9 +62,10 @@ group by
 ~~~
 ~~~text
 # Status, Lapsed/Terminated Reason, Migrated System Count, Staging Count, Difference
-ISSUED, , 18858, 18858, 0
+ISSUED, , 18865, 18865, 0
 CANCELLED, MC04, 244, 244, 0
 CANCELLED, MC02, 121, 121, 0
+
 ~~~
 
 ### 3-Agent wise Policy Status wise
@@ -1385,7 +1386,7 @@ order by
 	year(issuedt) desc;
 
 # Year, Migrated System Count, Staging Count, Difference
-2023, 19223, 19223, 0
+2023, 19230, 19230, 0
 
 ~~~
 
@@ -1405,8 +1406,9 @@ order by
 	year(logindt) desc;
 
 # Year, Migrated System Count, Staging Count, Difference
-2023, 19222, 19222, 0
+2023, 19229, 19229, 0
 2022, 1, 1, 0
+
 
 ~~~
 
