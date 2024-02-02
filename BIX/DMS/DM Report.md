@@ -1428,7 +1428,7 @@ order by
 	year(commencementdt) desc;
 
 # Year, Migrated System Count, Staging Count, Difference
-2024, 520, 520, 0
+2024, 527, 527, 0
 2023, 18699, 18699, 0
 2022, 4, 4, 0
 
@@ -1451,11 +1451,18 @@ order by
 
 # Year, Migrated System Count, Staging Count, Difference
 2999, 479, 479, 0
+2058, 1, 1, 0
+2055, 1, 1, 0
+2052, 2, 2, 0
+2050, 1, 1, 0
+2044, 1, 1, 0
+2041, 1, 1, 0
 2026, 6264, 6264, 0
 2025, 1873, 1873, 0
 2024, 8244, 8244, 0
 2023, 2362, 2362, 0
 2022, 1, 1, 0
+
 
 ~~~
 
@@ -1478,7 +1485,8 @@ group by
 AGENT, 11759, 11759, 0
 BACK_OFFICE, 1829, 1829, 0
 , 2514, 2514, 0
-CUSTOMER, 3121, 3121, 0
+CUSTOMER, 3128, 3128, 0
+
 
 ~~~
 
@@ -1499,7 +1507,8 @@ group by
 	endorsementcommissionflag;
 
 # Endorsement Commission Flag, Migrated System Count, Staging Count, Difference
-NO, 19223, 19223, 0
+NO, 19230, 19230, 0
+
 
 ~~~
 
@@ -1518,6 +1527,8 @@ group by
 
 # Commission Rate Change Flag, Migrated System Count, Staging Count, Difference
 NO, 33931, 33931, 0
+
+
 
 ~~~
 
