@@ -86,3 +86,9 @@ select fee_id,fee_no,fee_type,created_at from fee where policy_no = "2100000175"
 
 INSERT INTO cdc_sync_rec (rec_id, ref_id, ref_class_name, ref_type, retry_times, created_at, created_by, `level`, destination)
 select distinct bill_id,bill_id,"Bill","bill",0,now(),"1ecc5295c5de60b4af63f9375c07ff594fe0a8",5990,'S3' from bill where bill_id='1ed335401e70677792cb21a28d1dff66f16543';
+
+Barry Fu(符嘉俊) 2-20 17:22:10
+https://jenkins-devops.income.com.sg
+
+Barry Fu(符嘉俊) 2-20 17:22:47
+https://www.uat.income.com.sg/bix/report
