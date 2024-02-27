@@ -1,4 +1,6 @@
 ## General policy issued to overseas customer (i.e., GL posting will be generated with Segment 6).
+select ma_no,details->'$.status',details->'$.ext.fundType' from ma where details->'$.maType'='FWG' and details->'$.ext.fundType'='OIF';
+
 select
 	distinct g.ma_no,g.product_code,g.dr_seg5
 from
