@@ -25,6 +25,8 @@ join trans_index t on
 	and t.product_cate in ('EB','AFFINITY')
 	and exists (select '1' from gl_entry_split g2 where g.fee_type=g2.fee_type and g.ma_no=g2.ma_no and g.dr_seg3!=g2.dr_seg3);
 # General policy with multiple coverages (i.e., GL posting will be generated with multiple Cost Centres).
+# "2100341877"
+
 select
 	distinct g.ma_no,t.product_cate,g.product_code,g.coverage_code,g.dr_seg3
 from
