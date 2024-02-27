@@ -13,7 +13,7 @@ join trans_index t on
 	and t.issue_date > '2023-01-01 00:00:00'
 	and t.product_cate not in ('EB','AFFINITY');
 # Group policy with multiple coverages (i.e., GL posting will be generated with multiple Cost Centres).
-# "2100341877"
+# "2100493223"
 select
 	distinct g.ma_no,t.product_cate,g.product_code,g.coverage_code,g.dr_seg3
 from
