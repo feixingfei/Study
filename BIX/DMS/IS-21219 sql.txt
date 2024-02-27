@@ -13,6 +13,7 @@ join trans_index t on
 	and t.issue_date > '2023-01-01 00:00:00'
 	and t.product_cate not in ('EB','AFFINITY');
 # Group policy with multiple coverages (i.e., GL posting will be generated with multiple Cost Centres).
+# "2100341877"
 select
 	distinct g.ma_no,t.product_cate,g.product_code,g.coverage_code,g.dr_seg3
 from
@@ -21,11 +22,10 @@ join trans_index t on
 	g.fee_type = 'GWP'
 	and g.ma_id = t.ma_id
 	and t.biz_type in ("NB","RN")
-	and t.issue_date > '2023-01-01 00:00:00'
 	and t.product_cate in ('EB','AFFINITY')
+	and exists (select '1' from ma m where g.ma_id=m.ma_id and m.created_at > '2023-01-01 00:00:00')
 	and exists (select '1' from gl_entry_split g2 where g.fee_type=g2.fee_type and g.ma_no=g2.ma_no and g.dr_seg3!=g2.dr_seg3);
 # General policy with multiple coverages (i.e., GL posting will be generated with multiple Cost Centres).
-# "2100341877"
 
 select
 	distinct g.ma_no,t.product_cate,g.product_code,g.coverage_code,g.dr_seg3
