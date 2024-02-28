@@ -65,3 +65,143 @@ select f1.ma_no,f1.policy_no,f1.fee_type,f1.biz_type,b.bill_ref_no from fee f1 j
 	and f1.bill_id = b.bill_id
 order by f1.ma_no,f1.policy_no,f1.biz_type;
 select ma_no,policy_no,fee_type,biz_type,bill_id from fee where ma_no = "" or policy_no = "2300002100";
+
+
+# IS-20320
+SELECT  
+    b.sc_code as 'Agent ID (T1)',
+    b.bill_ref_no as 'Premium Reference Number',
+    (
+    	select case 
+    		when f.declaration_id is not null then 'DECLARATION'
+    		when f.endo_id is not null and f.life_policy_renewal_id is null and e.endo_details->>"$.endoType"='CHANGE_OF_SCHEME' then 'CHANGEPLAN'
+    		when f.endo_id is not null and f.life_policy_renewal_id is null then e.endo_details->>"$.endoType"
+    		when f.biz_type = 'RN' then 'RB'
+    		when f.biz_type = 'NB' and f.life_policy_renewal_id is not null and l.seq != 1 then 'RNPRE'
+    		when f.endo_id is not null and e.endo_details->>"$.endoType"='MEMBER_MOVEMENT' and e.endo_details->>"$.subEndoType"='NEW_MEMBER' and f.life_policy_renewal_id is not null then 'ADDMEMBER'
+    		when f.endo_id is not null and e.endo_details->>"$.endoType"='MEMBER_MOVEMENT' and e.endo_details->>"$.subEndoType"='DELETE_MEMBER' and f.life_policy_renewal_id is not null then 'DELETEMEMBER'
+    		when f.endo_id is not null and e.endo_details->>"$.endoType"='EDIT_INSURED_DOB' and f.life_policy_renewal_id is not null then 'EDITDOB'
+    		when f.endo_id is not null and e.endo_details->>"$.endoType"='CHANGE_SA' and f.life_policy_renewal_id is not null then 'CHANGESA'
+    		when f.endo_id is not null and e.endo_details->>"$.endoType"='CHANGE_OF_SCHEME' and f.life_policy_renewal_id is not null then 'CHANGEPLAN'
+    		when f.endo_id is not null and e.endo_details->>"$.endoType"='EDIT_PH_NFN' and f.life_policy_renewal_id is not null then 'PHNFN'
+    		when f.endo_id is not null and e.endo_details->>"$.endoType"='POLICY_LAPSE' and f.life_policy_renewal_id is not null then 'POLICY_LAPSE'
+    		when f.endo_id is not null and e.endo_details->>"$.endoType"='CHANGE_PAYMENT_FREQUENCY' and f.life_policy_renewal_id is not null then 'CHANGEFREQUENCY'
+    		when f.endo_id is not null and e.endo_details->>"$.endoType"='MIDWAY_CANCEL' and f.life_policy_renewal_id is not null then 'MIDWAY_CANCEL'
+    		when f.endo_id is not null and e.endo_details->>"$.endoType"='INCEPTION_CANCEL' and f.life_policy_renewal_id is not null then 'INCEPTION_CANCEL'
+    		when f.endo_id is not null and e.endo_details->>"$.endoType"='EXPIRE_POLICY' and f.life_policy_renewal_id is not null then 'EXPIRE_POLICY'
+    		else f.biz_type
+    	end
+    ) as 'Alteration Type',
+    (select case
+    	when f.product_cate = 'EB' or f.life_policy_renewal_id is not null then 'Group'
+    	else 'General'
+    end) as 'LOB',
+    f.product_code as 'Product Code',
+    f.coverage_code as 'Coverage Code',
+    DATE_FORMAT(b.due_date, '%Y-%m-%d') as 'Premium Due Date',
+    (select case 
+	    when f.endo_id is not null
+		      then (select DATE_FORMAT(STR_TO_DATE(endo_details ->> '$.newPolicy.proposalDate','%d/%m/%Y'), '%Y-%m-%d') from endo where endo.endo_id = f.endo_id)
+		when f.declaration_no is not null
+		      then (select DATE_FORMAT(STR_TO_DATE(ma.declaration_details ->> '$.completedAt','%d/%m/%Y'), '%Y-%m-%d') from ma_declaration ma where ma.declaration_id = f.declaration_id)
+		else (select DATE_FORMAT(STR_TO_DATE(policy_details ->> '$.proposalDate', '%d/%m/%Y'),'%Y-%m-%d') from policy where policy.policy_id = f.policy_id)
+	end) as 'Policy Submission Date',
+	if(f.ma_id is not null, 
+		(select ma.details->>'$.status' from ma where ma.ma_id = f.ma_id),
+        (select policy_details->>'$.status' from policy where policy.policy_id = f.policy_id)) as 'Policy Status',
+    'LUMPSUM' as 'Payment frequency',
+    f.amount as 'Modal Premium Amount',
+    (f.amount + ifnull((
+    	select sum(ifnull(f1.amount,0)) from fee f1 where f1.fee_type='TURNOVER_TAX_ON_PREM' and f.product_code=f1.product_code 
+    		and f.coverage_code=f1.coverage_code and f.policy_no=f1.policy_no and f.endo_no=f1.endo_no and f.billing_schedule_id=f1.billing_schedule_id and f.fee_details->>"$.billSeq"=f1.fee_details->>"$.billSeq"
+    ),0)) as 'Appropriation Amount',
+    if(f.endo_id is not null or f.declaration_no is not null, f.amount,0) as 'Endorsement ANP',
+    (SELECT commBill.bill_ref_no FROM bill commBill,json_table(b.bill_details, '$.linkedBillIds[*]' COLUMNS (billId varchar(50) path '$' )) a
+     	where commBill.bill_id = (a.billId collate utf8mb4_unicode_ci) and commBill.bill_type = 'DIRECT_COMM' limit 1
+    ) as 'Commission Reference Number',
+    (SELECT round(abs(commBill1.bill_details ->> '$.originalFeeAmount')/abs(b.bill_details ->> '$.originalFeeAmount'), 2) 
+    	FROM bill commBill1, json_table(b.bill_details, '$.linkedBillIds[*]' COLUMNS (billId varchar(50) path '$' )) a
+        where commBill1.bill_id = (a.billId collate utf8mb4_unicode_ci) and commBill1.bill_type = 'DIRECT_COMM' limit 1
+    ) as 'Commission Rate',
+    (SELECT commBill1.amount FROM bill commBill1,json_table(b.bill_details, '$.linkedBillIds[*]' COLUMNS (billId varchar(50) path '$')) a
+        where commBill1.bill_id = (a.billId collate utf8mb4_unicode_ci) and commBill1.bill_type = 'DIRECT_COMM' limit 1
+    ) as 'Commission Amount',
+    (SELECT commBill2.commission_status FROM bill commBill2,json_table(b.bill_details, '$.linkedBillIds[*]' COLUMNS (billId varchar(50) path '$' )) a
+        where commBill2.bill_id = (a.billId collate utf8mb4_unicode_ci) and commBill2.bill_type = 'DIRECT_COMM' limit 1
+    ) as 'Commission Status',
+    ' ' as 'Commission Rate Change Flag',
+    'SC' as 'Commission Type',
+    (SELECT commBill3.sc_code FROM bill commBill3,json_table(b.bill_details, '$.linkedBillIds[*]' COLUMNS (billId varchar(50) path '$' )) a
+      	where commBill3.bill_id = (a.billId collate utf8mb4_unicode_ci) and commBill3.bill_type = 'OR_COMM' and commBill3.bill_details ->> '$.commissionType' = 'TIER_2_OR_COMM' limit 1
+    ) as 'Comm T2 Agent ID',
+    (SELECT commBill.bill_details ->> '$.commissionTags' FROM bill commBill,json_table(b.bill_details, '$.linkedBillIds[*]' COLUMNS (billId varchar(50) path '$' )) a
+        where commBill.bill_id = (a.billId collate utf8mb4_unicode_ci) and commBill.bill_type = 'OR_COMM' and commBill.bill_details ->> '$.commissionType' = 'TIER_2_OR_COMM' limit 1
+    ) as 'Comm T2 Designation',
+    '' as 'Comm T2 Channel',
+    (SELECT round(abs(commBill.bill_details ->> '$.originalFeeAmount')/abs(b.bill_details ->> '$.originalFeeAmount'), 2)
+        FROM bill commBill,json_table(b.bill_details, '$.linkedBillIds[*]' COLUMNS (billId varchar(50) path '$' )) a
+        where commBill.bill_id = (a.billId collate utf8mb4_unicode_ci) and commBill.bill_type = 'OR_COMM' and commBill.bill_details ->> '$.commissionType' = 'TIER_2_OR_COMM' limit 1
+    ) as 'Comm T2 Comm Rate',
+    (SELECT commBill.amount FROM bill commBill,json_table(b.bill_details, '$.linkedBillIds[*]' COLUMNS (billId varchar(50) path '$' )) a
+        where commBill.bill_id = (a.billId collate utf8mb4_unicode_ci) and commBill.bill_type = 'OR_COMM' and commBill.bill_details ->> '$.commissionType' = 'TIER_2_OR_COMM' limit 1
+    ) as 'Comm T2 Comm Amount',
+	(SELECT commBill.commission_status FROM bill commBill, json_table(b.bill_details, '$.linkedBillIds[*]' COLUMNS (billId varchar(50) path '$' )) a
+        where commBill.bill_id = (a.billId collate utf8mb4_unicode_ci) and commBill.bill_type = 'OR_COMM' and commBill.bill_details ->> '$.commissionType' = 'TIER_2_OR_COMM' limit 1
+    ) as 'Comm T2 Comm Status',
+ 	(SELECT commBill.sc_code FROM bill commBill, json_table(b.bill_details, '$.linkedBillIds[*]' COLUMNS (billId varchar(50) path '$' )) a
+        where commBill.bill_id = (a.billId collate utf8mb4_unicode_ci) and commBill.bill_type = 'OR_COMM' and commBill.bill_details ->> '$.commissionType' = 'TIER_3_OR_COMM' limit 1
+    ) as 'Comm T3 Agent ID',
+    (SELECT commBill.bill_details ->> '$.commissionTags' FROM bill commBill, json_table(b.bill_details, '$.linkedBillIds[*]' COLUMNS (billId varchar(50) path '$' )) a
+        where commBill.bill_id = (a.billId collate utf8mb4_unicode_ci) and commBill.bill_type = 'OR_COMM' and commBill.bill_details ->> '$.commissionType' = 'TIER_3_OR_COMM' limit 1
+    ) as 'Comm T3 Designation',
+    '' as 'Comm T3 Channel',
+    (SELECT round(abs(commBill.bill_details ->> '$.originalFeeAmount')/abs(b.bill_details ->> '$.originalFeeAmount'), 2) 
+    	FROM bill commBill,json_table(b.bill_details, '$.linkedBillIds[*]' COLUMNS (billId varchar(50) path '$' )) a
+        where commBill.bill_id = (a.billId collate utf8mb4_unicode_ci) and commBill.bill_type = 'OR_COMM' and commBill.bill_details ->> '$.commissionType' = 'TIER_3_OR_COMM' limit 1
+    ) as 'Comm T3 Comm Rate',
+    (SELECT commBill.amount FROM bill commBill, json_table(b.bill_details, '$.linkedBillIds[*]' COLUMNS (billId varchar(50) path '$' )) a
+        where commBill.bill_id = (a.billId collate utf8mb4_unicode_ci) and commBill.bill_type = 'OR_COMM' and commBill.bill_details ->> '$.commissionType' = 'TIER_3_OR_COMM' limit 1
+    ) as 'Comm T3 Comm Amount',
+    (SELECT commBill.commission_status FROM bill commBill, json_table(b.bill_details, '$.linkedBillIds[*]' COLUMNS (billId varchar(50) path '$' )) a
+        where commBill.bill_id = (a.billId collate utf8mb4_unicode_ci) and commBill.bill_type = 'OR_COMM' and commBill.bill_details ->> '$.commissionType' = 'TIER_3_OR_COMM' limit 1
+    ) as 'Comm T3 Comm Status'
+FROM  
+    fee f  
+left join endo e on
+	f.endo_id = e.endo_id 
+left join life_policy_renewal l on
+	l.policy_renewal_id = f.life_policy_renewal_id 
+join bill b ON  
+    f.fee_type = 'GWP'  
+    and (f.policy_no in ('2100021307-02', '2100064946-04', '2100065372-03', '2100065658-03',
+                               '2100066271-04', '2100088526-02', '2100124465-02', '2100129086-02',
+                               '2100144010-02', '2100237707-02', '2100271487-01', '2100290928-04',
+                               '2100328589-04', '2100346952-07', '2100348901-06', '2100357811-01',
+                               '2100379166-02', '2100395759-01', '2100399499-01', '2100453783-01',
+                               '2100490302', '2100492182', '2100492842', '2100494391',
+                               '2100496671', '2100499387-01', '2100519044-01', '2100521580-01',
+                               '2100583100', '2100584730', '2100587050', '2100627160',
+                               '2100630930', '2100640937', '2100649580', '2100653130-01',
+                               '2000012557', '2000111108', '2000186712', '2100015381-01',
+                               '2100017045-01', '2100025494-01', '2100066600-02', '2100085641-13',
+                               '2100094668-01', '2100132903-03', '2100225047-01', '2100250826-01',
+                               '2100298817-02', '2100308283', '2100313597', '2100343184',
+                               '2100346112', '2100361226', '2100371606', '2100374205',
+                               '2100384149', '2100393111', '2100418373', '2100475681') or
+          f.ma_no in ('2100021307-02', '2100064946-04', '2100065372-03', '2100065658-03',
+                               '2100066271-04', '2100088526-02', '2100124465-02', '2100129086-02',
+                               '2100144010-02', '2100237707-02', '2100271487-01', '2100290928-04',
+                               '2100328589-04', '2100346952-07', '2100348901-06', '2100357811-01',
+                               '2100379166-02', '2100395759-01', '2100399499-01', '2100453783-01',
+                               '2100490302', '2100492182', '2100492842', '2100494391',
+                               '2100496671', '2100499387-01', '2100519044-01', '2100521580-01',
+                               '2100583100', '2100584730', '2100587050', '2100627160',
+                               '2100630930', '2100640937', '2100649580', '2100653130-01',
+                               '2000012557', '2000111108', '2000186712', '2100015381-01',
+                               '2100017045-01', '2100025494-01', '2100066600-02', '2100085641-13',
+                               '2100094668-01', '2100132903-03', '2100225047-01', '2100250826-01',
+                               '2100298817-02', '2100308283', '2100313597', '2100343184',
+                               '2100346112', '2100361226', '2100371606', '2100374205',
+                               '2100384149', '2100393111', '2100418373', '2100475681') 
+         )
+    and b.bill_id = f.bill_id;
