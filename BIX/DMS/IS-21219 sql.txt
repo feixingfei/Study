@@ -58,3 +58,10 @@ select ma_no,product_code,coverage_code,fee_type,dr_seg3,dr_seg5 from gl_entry_s
 # IS-21174  2100491247
 select ma_no,policy_no,fee_type,dr_seg5 from gl_entry_split where fee_type = 'BASIC_COMM' and dr_seg5 = '03';
 
+# IS-21175
+select f1.ma_no,f1.policy_no,f1.fee_type,f1.biz_type,b.bill_ref_no from fee f1 join bill b on
+	f1.fee_type = 'GWP'
+	and exists (select '1' from fee f2 where f1.bill_id = f2.bill_id and f1.biz_type != f2.biz_type)
+	and f1.bill_id = b.bill_id
+order by f1.ma_no,f1.policy_no,f1.biz_type;
+select ma_no,policy_no,fee_type,biz_type,bill_id from fee where ma_no = "" or policy_no = "2300002100";
