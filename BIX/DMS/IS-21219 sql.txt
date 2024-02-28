@@ -68,6 +68,16 @@ select ma_no,policy_no,fee_type,biz_type,bill_id from fee where ma_no = "" or po
 
 
 # IS-20320
+select
+	f.fee_no,b.bill_ref_no
+from
+	fee f
+join bill b on
+	f.fee_type = 'GWP'
+	and b.bill_id = f.bill_id
+join bill basicB on
+	basicb.bill_id in (json_table(b.bill_details, '$.linkedBillIds[*]' COLUMNS (billId varchar(50) path '$' ));
+
 SELECT  
     b.sc_code as 'Agent ID (T1)',
     b.bill_ref_no as 'Premium Reference Number',
@@ -97,7 +107,16 @@ SELECT
     	else 'General'
     end) as 'LOB',
     f.product_code as 'Product Code',
-    f.coverage_code as 'Coverage Code',
+    (
+    	select case 
+    		when f.coverage_code is null and f.product_code = 'CAP' then 'MD'
+    		when f.coverage_code is null and f.product_code = 'FWB' then 'FWB'
+    		when f.coverage_code is null and f.product_code = 'CPL' then 'EVENT_LIABLITY'
+    		when f.coverage_code is null and f.product_code = 'GPAS' then 'GPAS'
+    		when f.coverage_code is null and f.product_code = 'GFW' then 'HSPT'
+    		else f.coverage_code 
+    	end
+    ) as 'Coverage Code',
     DATE_FORMAT(b.due_date, '%Y-%m-%d') as 'Premium Due Date',
     (select case 
 	    when f.endo_id is not null
@@ -187,7 +206,9 @@ join bill b ON
                                '2100094668-01', '2100132903-03', '2100225047-01', '2100250826-01',
                                '2100298817-02', '2100308283', '2100313597', '2100343184',
                                '2100346112', '2100361226', '2100371606', '2100374205',
-                               '2100384149', '2100393111', '2100418373', '2100475681') or
+                               '2100384149', '2100393111', '2100418373', '2100475681','2100500018' ,
+                               '2100502129' ,'2000508138' ,'2100494846' ,'2100588210' ,'2100493170' ,
+                               '2100504669' ,'2000365286' ,'2000457814' ,'2000371855') or
           f.ma_no in ('2100021307-02', '2100064946-04', '2100065372-03', '2100065658-03',
                                '2100066271-04', '2100088526-02', '2100124465-02', '2100129086-02',
                                '2100144010-02', '2100237707-02', '2100271487-01', '2100290928-04',
@@ -202,6 +223,8 @@ join bill b ON
                                '2100094668-01', '2100132903-03', '2100225047-01', '2100250826-01',
                                '2100298817-02', '2100308283', '2100313597', '2100343184',
                                '2100346112', '2100361226', '2100371606', '2100374205',
-                               '2100384149', '2100393111', '2100418373', '2100475681') 
+                               '2100384149', '2100393111', '2100418373', '2100475681','2100500018' ,
+                               '2100502129' ,'2000508138' ,'2100494846' ,'2100588210' ,'2100493170' ,
+                               '2100504669' ,'2000365286' ,'2000457814' ,'2000371855') 
          )
     and b.bill_id = f.bill_id;
