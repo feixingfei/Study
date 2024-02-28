@@ -68,16 +68,6 @@ select ma_no,policy_no,fee_type,biz_type,bill_id from fee where ma_no = "" or po
 
 
 # IS-20320
-select
-	f.fee_no,b.bill_ref_no
-from
-	fee f
-join bill b on
-	f.fee_type = 'GWP'
-	and b.bill_id = f.bill_id
-join bill basicB on
-	basicb.bill_id in (json_table(b.bill_details, '$.linkedBillIds[*]' COLUMNS (billId varchar(50) path '$' ));
-
 SELECT  
     b.sc_code as 'Agent ID (T1)',
     b.bill_ref_no as 'Premium Reference Number',
