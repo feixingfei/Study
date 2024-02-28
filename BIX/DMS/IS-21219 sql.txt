@@ -55,6 +55,6 @@ join trans_index t on
 select ma_no,product_code,coverage_code,fee_type,dr_seg3,dr_seg5 from gl_entry_split where fee_type = 'GWP' and ma_no = "2000030877";
 
 
-# IS-21174
+# IS-21174  2100491247
 select ma_no,policy_no,fee_type,dr_seg5 from gl_entry_split where fee_type = 'BASIC_COMM' and dr_seg5 = '03';
 
