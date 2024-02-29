@@ -239,3 +239,7 @@ where f.fee_type = 'GWP'
                                '2100502129' ,'2000508138' ,'2100494846' ,'2100588210' ,'2100493170' ,
                                '2100504669' ,'2000365286' ,'2000457814' ,'2000371855') 
          );
+
+
+select ma_no,policy_no,endo_no,biz_type,fee_type,fee_details->>"$.commissionType",amount,product_code,coverage_code,billing_schedule_id,fee_details->>"$.billSeq",bill_id from fee where ma_no ='2100036942';
+select bill_id,ma_no,policy_no,endo_no,biz_type,bill_type,bill_details->>"$.commissionType",amount,bill_details->>"$.linkedBillIds[*]" from bill where ma_no = '2100036942';
