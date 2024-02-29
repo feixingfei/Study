@@ -184,20 +184,23 @@ left join fee f4 on
 join bill b ON  
     b.bill_id = f.bill_id
 left join bill b1 on
-	b1.bill_type = 'DIRECT_COMM'
+	JSON_LENGTH(b.bill_details->'$.linkedBillIds') > 0
+	and b1.bill_type = 'DIRECT_COMM'
 	and exists (
 		select '1' from JSON_TABLE(b.bill_details,'$.linkedBillIds[*]' COLUMNS (billId varchar(50) path '$' )) a 
 			where b1.bill_id = (a.billId collate utf8mb4_unicode_ci)
 	)
 left join bill b2 on
-	b2.bill_type = 'OR_COMM'
+	JSON_LENGTH(b.bill_details->'$.linkedBillIds') > 0
+	and b2.bill_type = 'OR_COMM'
 	and b2.bill_details->>'$.commissionType'='TIER_2_OR_COMM'
 	and exists (
 		select '1' from JSON_TABLE(b.bill_details,'$.linkedBillIds[*]' COLUMNS (billId varchar(50) path '$' )) a 
 			where b2.bill_id = (a.billId collate utf8mb4_unicode_ci)
 	)
 left join bill b3 on
-	b3.bill_type = 'OR_COMM'
+	JSON_LENGTH(b.bill_details->'$.linkedBillIds') > 0
+	and b3.bill_type = 'OR_COMM'
 	and b3.bill_details->>'$.commissionType'='TIER_3_OR_COMM'
 	and exists (
 		select '1' from JSON_TABLE(b.bill_details,'$.linkedBillIds[*]' COLUMNS (billId varchar(50) path '$' )) a 
@@ -237,7 +240,7 @@ where f.fee_type = 'GWP'
                                '2100346112', '2100361226', '2100371606', '2100374205',
                                '2100384149', '2100393111', '2100418373', '2100475681','2100500018' ,
                                '2100502129' ,'2000508138' ,'2100494846' ,'2100588210' ,'2100493170' ,
-                               '2100504669' ,'2000365286' ,'2000457814' ,'2000371855','2100036942') 
+                               '2100504669' ,'2000365286' ,'2000457814' ,'2000371855','2100036942','2100036906') 
          );
 
 
