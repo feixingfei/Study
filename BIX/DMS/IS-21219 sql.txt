@@ -1,0 +1,248 @@
+## General policy issued to overseas customer (i.e., GL posting will be generated with Segment 6).
+select ma_no,details->'$.status',details->'$.ext.fundType' from ma where details->'$.maType'='FWG' and details->'$.ext.fundType'='OIF';
+
+select
+	distinct g.ma_no,g.product_code,g.dr_seg5
+from
+	gl_entry_split g
+join trans_index t on
+	g.fee_type = 'GWP'
+	and g.dr_seg5 = '06'
+	and g.ma_id = t.ma_id 
+	and t.biz_type in ("NB","RN")
+	and t.issue_date > '2023-01-01 00:00:00'
+	and t.product_cate not in ('EB','AFFINITY');
+# Group policy with multiple coverages (i.e., GL posting will be generated with multiple Cost Centres).
+# "2100493223"
+select
+	distinct g.ma_no,t.product_cate,g.product_code,g.coverage_code,g.dr_seg3
+from
+	gl_entry_split g
+join trans_index t on
+	g.fee_type = 'GWP'
+	and g.ma_id = t.ma_id
+	and t.biz_type in ("NB","RN")
+	and t.product_cate in ('EB','AFFINITY')
+	and exists (select '1' from ma m where g.ma_id=m.ma_id and m.created_at > '2023-01-01 00:00:00')
+	and exists (select '1' from gl_entry_split g2 where g.fee_type=g2.fee_type and g.ma_no=g2.ma_no and g.dr_seg3!=g2.dr_seg3);
+# General policy with multiple coverages (i.e., GL posting will be generated with multiple Cost Centres).
+
+select
+	distinct g.ma_no,t.product_cate,g.product_code,g.coverage_code,g.dr_seg3
+from
+	gl_entry_split g
+join trans_index t on
+	g.fee_type = 'GWP'
+	and g.ma_id = t.ma_id
+	and t.biz_type in ("NB","RN")
+	and t.issue_date > '2023-01-01 00:00:00'
+	and t.product_cate not in ('EB','AFFINITY')
+	and exists (select '1' from gl_entry_split g2 where g.fee_type=g2.fee_type and g.ma_no=g2.ma_no and g.dr_seg3!=g2.dr_seg3);
+
+select
+	distinct g.policy_no,t.product_cate,g.product_code,g.coverage_code,g.dr_seg3
+from
+	gl_entry_split g
+join trans_index t on
+	g.fee_type = 'GWP'
+	and g.policy_id = t.policy_id
+	and t.biz_type in ("NB","RN")
+	and t.issue_date > '2023-01-01 00:00:00'
+	and t.product_cate not in ('EB','AFFINITY')
+	and t.ma_id is null
+	and exists (select '1' from gl_entry_split g2 where g.fee_type=g2.fee_type and g.ma_no=g2.ma_no and g.dr_seg3!=g2.dr_seg3);
+
+select ma_no,product_code,coverage_code,fee_type,dr_seg3,dr_seg5 from gl_entry_split where fee_type = 'GWP' and ma_no = "2000030877";
+
+
+# IS-21174  2100491247
+select ma_no,policy_no,fee_type,dr_seg5 from gl_entry_split where fee_type = 'BASIC_COMM' and dr_seg5 = '03';
+
+# IS-21175 2000439521
+select f1.ma_no,f1.policy_no,f1.fee_type,f1.biz_type,b.bill_ref_no from fee f1 join bill b on
+	f1.fee_type = 'GWP'
+	and exists (select '1' from fee f2 where f1.bill_id = f2.bill_id and f1.biz_type != f2.biz_type)
+	and f1.bill_id = b.bill_id
+order by f1.ma_no,f1.policy_no,f1.biz_type;
+select ma_no,policy_no,fee_type,biz_type,bill_id from fee where ma_no = "" or policy_no = "2300002100";
+
+
+# IS-20320
+SELECT  
+	(
+    	select case 
+    		when f.ma_no is not null then f.ma_no 
+    		else f.policy_no 
+    	end
+    ) as 'Policy Number',
+    b.sc_code as 'Agent ID (T1)',
+    b.bill_ref_no as 'Premium Reference Number',
+    (
+    	select case 
+    		when f.declaration_id is not null then 'DECLARATION'
+    		when f.endo_id is not null and f.life_policy_renewal_id is null and e.endo_details->>"$.endoType"='CHANGE_OF_SCHEME' then 'CHANGEPLAN'
+    		when f.endo_id is not null and f.life_policy_renewal_id is null then e.endo_details->>"$.endoType"
+    		when f.biz_type = 'RN' then 'RB'
+    		when f.biz_type = 'NB' and f.life_policy_renewal_id is not null and l.seq != 1 then 'RNPRE'
+    		when f.endo_id is not null and e.endo_details->>"$.endoType"='MEMBER_MOVEMENT' and e.endo_details->>"$.subEndoType"='NEW_MEMBER' and f.life_policy_renewal_id is not null then 'ADDMEMBER'
+    		when f.endo_id is not null and e.endo_details->>"$.endoType"='MEMBER_MOVEMENT' and e.endo_details->>"$.subEndoType"='DELETE_MEMBER' and f.life_policy_renewal_id is not null then 'DELETEMEMBER'
+    		when f.endo_id is not null and e.endo_details->>"$.endoType"='EDIT_INSURED_DOB' and f.life_policy_renewal_id is not null then 'EDITDOB'
+    		when f.endo_id is not null and e.endo_details->>"$.endoType"='CHANGE_SA' and f.life_policy_renewal_id is not null then 'CHANGESA'
+    		when f.endo_id is not null and e.endo_details->>"$.endoType"='CHANGE_OF_SCHEME' and f.life_policy_renewal_id is not null then 'CHANGEPLAN'
+    		when f.endo_id is not null and e.endo_details->>"$.endoType"='EDIT_PH_NFN' and f.life_policy_renewal_id is not null then 'PHNFN'
+    		when f.endo_id is not null and e.endo_details->>"$.endoType"='POLICY_LAPSE' and f.life_policy_renewal_id is not null then 'POLICY_LAPSE'
+    		when f.endo_id is not null and e.endo_details->>"$.endoType"='CHANGE_PAYMENT_FREQUENCY' and f.life_policy_renewal_id is not null then 'CHANGEFREQUENCY'
+    		when f.endo_id is not null and e.endo_details->>"$.endoType"='MIDWAY_CANCEL' and f.life_policy_renewal_id is not null then 'MIDWAY_CANCEL'
+    		when f.endo_id is not null and e.endo_details->>"$.endoType"='INCEPTION_CANCEL' and f.life_policy_renewal_id is not null then 'INCEPTION_CANCEL'
+    		when f.endo_id is not null and e.endo_details->>"$.endoType"='EXPIRE_POLICY' and f.life_policy_renewal_id is not null then 'EXPIRE_POLICY'
+    		else f.biz_type
+    	end
+    ) as 'Alteration Type',
+    (select case
+    	when f.product_cate = 'EB' or f.life_policy_renewal_id is not null then 'Group'
+    	else 'General'
+    end) as 'LOB',
+    f.product_code as 'Product Code',
+    (
+    	select case 
+    		when f.coverage_code is null and f.product_code = 'CAP' then 'MD'
+    		when f.coverage_code is null and f.product_code = 'FWB' then 'FWB'
+    		when f.coverage_code is null and f.product_code = 'CPL' then 'EVENT_LIABLITY'
+    		when f.coverage_code is null and f.product_code = 'GPAS' then 'GPAS'
+    		when f.coverage_code is null and f.product_code = 'GFW' then 'HSPT'
+    		else f.coverage_code 
+    	end
+    ) as 'Coverage Code',
+    DATE_FORMAT(b.due_date, '%Y-%m-%d') as 'Premium Due Date',
+    (select case 
+	    when f.endo_id is not null then (select DATE_FORMAT(STR_TO_DATE(e.endo_details ->> '$.newPolicy.proposalDate','%d/%m/%Y'), '%Y-%m-%d'))
+		when f.declaration_no is not null
+		      then (select DATE_FORMAT(STR_TO_DATE(ma.declaration_details ->> '$.completedAt','%d/%m/%Y'), '%Y-%m-%d') from ma_declaration ma where ma.declaration_id = f.declaration_id)
+		else (select DATE_FORMAT(STR_TO_DATE(policy_details ->> '$.proposalDate', '%d/%m/%Y'),'%Y-%m-%d') from policy where policy.policy_id = f.policy_id)
+	end) as 'Policy Submission Date',
+	if(f.ma_id is not null, 
+		(select ma.details->>'$.status' from ma where ma.ma_id = f.ma_id),
+        (select policy_details->>'$.status' from policy where policy.policy_id = f.policy_id)) as 'Policy Status',
+    'LUMPSUM' as 'Payment frequency',
+    f.amount as 'Modal Premium Amount',
+    (f.amount + ifnull((f1.amount),0)) as 'Appropriation Amount',
+    if(f.endo_id is not null or f.declaration_no is not null, f.amount,0) as 'Endorsement ANP',
+    'SC' as 'Commission Type',
+    b1.bill_ref_no as 'Commission Reference Number(T1)',
+    (
+    	SELECT round(abs(ifnull((f2.amount),0))/abs(f.amount), 2) 
+    ) as 'Commission Rate(T1)',
+    (ifnull((f2.amount),0)) as 'Commission Amount(T1)',
+    b1.commission_status as 'Commission Status(T1)',
+    ' ' as 'Commission Rate Change Flag(T1)',
+    'OSC' as 'Commission Type(T2)',
+    b2.bill_ref_no as 'Commission Reference Number(T2)',
+    b2.sc_code as 'Comm T2 Agent ID',
+    b2.bill_details->>'$.commissionTags[0]' as 'Comm T2 Designation',
+    '' as 'Comm T2 Channel',
+    (SELECT round(abs(ifnull((f3.amount),0))/abs(f.amount), 2) ) as 'Comm T2 Comm Rate',
+    ifnull((f3.amount),0) as 'Comm T2 Comm Amount',
+	b2.commission_status as 'Comm T2 Comm Status',
+    'OSC' as 'Commission Type(T3)',
+    b3.bill_ref_no as 'Commission Reference Number(T3)',
+ 	b3.sc_code as 'Comm T3 Agent ID',
+    b3.bill_details->>'$.commissionTags[0]' as 'Comm T3 Designation',
+    '' as 'Comm T3 Channel',
+    (SELECT round(abs(f4.amount)/abs(f.amount), 2)) as 'Comm T3 Comm Rate',
+    ifnull(f4.amount,0) as 'Comm T3 Comm Amount',
+    b3.commission_status as 'Comm T3 Comm Status'
+FROM  
+    fee f  
+left join endo e on
+	 f.endo_id = e.endo_id 
+left join life_policy_renewal l on
+	l.policy_renewal_id = f.life_policy_renewal_id 
+left join fee f1 on 
+	coalesce(f.ma_no,'1')=coalesce(f1.ma_no,'1') and coalesce(f.policy_no,'1')=coalesce(f1.policy_no,'1')and coalesce(f.endo_no,'1')=coalesce(f1.endo_no,'1')
+	and f.biz_type = f1.biz_type and f.product_code=f1.product_code and coalesce(f.coverage_code,'1')=coalesce(f1.coverage_code,'1')
+	and coalesce(f.billing_schedule_id,'1')=coalesce(f1.billing_schedule_id,'1')
+	and coalesce(f.fee_details->>"$.billSeq",'1')=coalesce(f1.fee_details->>"$.billSeq",'1')
+	and f1.fee_type='TURNOVER_TAX_ON_PREM'
+left join fee f2 on 
+	coalesce(f.ma_no,'1')=coalesce(f2.ma_no,'1') and coalesce(f.policy_no,'1')=coalesce(f2.policy_no,'1')and coalesce(f.endo_no,'1')=coalesce(f2.endo_no,'1')
+	and f.biz_type = f2.biz_type and f.product_code=f2.product_code and coalesce(f.coverage_code,'1')=coalesce(f2.coverage_code,'1')
+	and coalesce(f.billing_schedule_id,'1')=coalesce(f2.billing_schedule_id,'1')
+	and coalesce(f.fee_details->>"$.billSeq",'1')=coalesce(f2.fee_details->>"$.billSeq",'1')
+	and f2.fee_type='BASIC_COMM'
+left join fee f3 on 
+	coalesce(f.ma_no,'1')=coalesce(f3.ma_no,'1') and coalesce(f.policy_no,'1')=coalesce(f3.policy_no,'1')and coalesce(f.endo_no,'1')=coalesce(f3.endo_no,'1')
+	and f.biz_type = f3.biz_type and f.product_code=f3.product_code and coalesce(f.coverage_code,'1')=coalesce(f3.coverage_code,'1')
+	and coalesce(f.billing_schedule_id,'1')=coalesce(f3.billing_schedule_id,'1')
+	and coalesce(f.fee_details->>"$.billSeq",'1')=coalesce(f3.fee_details->>"$.billSeq",'1')
+	and f3.fee_type='OR_COMM' and f3.fee_details->>"$.commissionType"='TIER_3_OR_COMM'
+left join fee f4 on 
+	coalesce(f.ma_no,'1')=coalesce(f4.ma_no,'1') and coalesce(f.policy_no,'1')=coalesce(f4.policy_no,'1')and coalesce(f.endo_no,'1')=coalesce(f4.endo_no,'1')
+	and f.biz_type = f4.biz_type and f.product_code=f4.product_code and coalesce(f.coverage_code,'1')=coalesce(f4.coverage_code,'1')
+	and coalesce(f.billing_schedule_id,'1')=coalesce(f4.billing_schedule_id,'1')
+	and coalesce(f.fee_details->>"$.billSeq",'1')=coalesce(f4.fee_details->>"$.billSeq",'1')
+	and f4.fee_type='OR_COMM' and f4.fee_details->>"$.commissionType"='TIER_3_OR_COMM' 
+join bill b ON  
+    b.bill_id = f.bill_id
+left join bill b1 on
+	JSON_LENGTH(b.bill_details->'$.linkedBillIds') > 0
+	and b1.bill_type = 'DIRECT_COMM'
+	and exists (
+		select '1' from JSON_TABLE(b.bill_details,'$.linkedBillIds[*]' COLUMNS (billId varchar(50) path '$' )) a 
+			where b1.bill_id = (a.billId collate utf8mb4_unicode_ci)
+	)
+left join bill b2 on
+	JSON_LENGTH(b.bill_details->'$.linkedBillIds') > 0
+	and b2.bill_type = 'OR_COMM'
+	and b2.bill_details->>'$.commissionType'='TIER_2_OR_COMM'
+	and exists (
+		select '1' from JSON_TABLE(b.bill_details,'$.linkedBillIds[*]' COLUMNS (billId varchar(50) path '$' )) a 
+			where b2.bill_id = (a.billId collate utf8mb4_unicode_ci)
+	)
+left join bill b3 on
+	JSON_LENGTH(b.bill_details->'$.linkedBillIds') > 0
+	and b3.bill_type = 'OR_COMM'
+	and b3.bill_details->>'$.commissionType'='TIER_3_OR_COMM'
+	and exists (
+		select '1' from JSON_TABLE(b.bill_details,'$.linkedBillIds[*]' COLUMNS (billId varchar(50) path '$' )) a 
+			where b3.bill_id = (a.billId collate utf8mb4_unicode_ci)
+	)
+where f.fee_type = 'GWP'  
+    and (f.policy_no in ('2100021307-02', '2100064946-04', '2100065372-03', '2100065658-03',
+                               '2100066271-04', '2100088526-02', '2100124465-02', '2100129086-02',
+                               '2100144010-02', '2100237707-02', '2100271487-01', '2100290928-04',
+                               '2100328589-04', '2100346952-07', '2100348901-06', '2100357811-01',
+                               '2100379166-02', '2100395759-01', '2100399499-01', '2100453783-01',
+                               '2100490302', '2100492182', '2100492842', '2100494391',
+                               '2100496671', '2100499387-01', '2100519044-01', '2100521580-01',
+                               '2100583100', '2100584730', '2100587050', '2100627160',
+                               '2100630930', '2100640937', '2100649580', '2100653130-01',
+                               '2000012557', '2000111108', '2000186712', '2100015381-01',
+                               '2100017045-01', '2100025494-01', '2100066600-02', '2100085641-13',
+                               '2100094668-01', '2100132903-03', '2100225047-01', '2100250826-01',
+                               '2100298817-02', '2100308283', '2100313597', '2100343184',
+                               '2100346112', '2100361226', '2100371606', '2100374205',
+                               '2100384149', '2100393111', '2100418373', '2100475681','2100500018' ,
+                               '2100502129' ,'2000508138' ,'2100494846' ,'2100588210' ,'2100493170' ,
+                               '2100504669' ,'2000365286' ,'2000457814' ,'2000371855','2100036880') or
+          f.ma_no in ('2100021307-02', '2100064946-04', '2100065372-03', '2100065658-03',
+                               '2100066271-04', '2100088526-02', '2100124465-02', '2100129086-02',
+                               '2100144010-02', '2100237707-02', '2100271487-01', '2100290928-04',
+                               '2100328589-04', '2100346952-07', '2100348901-06', '2100357811-01',
+                               '2100379166-02', '2100395759-01', '2100399499-01', '2100453783-01',
+                               '2100490302', '2100492182', '2100492842', '2100494391',
+                               '2100496671', '2100499387-01', '2100519044-01', '2100521580-01',
+                               '2100583100', '2100584730', '2100587050', '2100627160',
+                               '2100630930', '2100640937', '2100649580', '2100653130-01',
+                               '2000012557', '2000111108', '2000186712', '2100015381-01',
+                               '2100017045-01', '2100025494-01', '2100066600-02', '2100085641-13',
+                               '2100094668-01', '2100132903-03', '2100225047-01', '2100250826-01',
+                               '2100298817-02', '2100308283', '2100313597', '2100343184',
+                               '2100346112', '2100361226', '2100371606', '2100374205',
+                               '2100384149', '2100393111', '2100418373', '2100475681','2100500018' ,
+                               '2100502129' ,'2000508138' ,'2100494846' ,'2100588210' ,'2100493170' ,
+                               '2100504669' ,'2000365286' ,'2000457814' ,'2000371855','2100036942','2100036906') 
+         );
+
+
+select ma_no,policy_no,endo_no,biz_type,fee_type,fee_details->>"$.commissionType",amount,product_code,coverage_code,billing_schedule_id,fee_details->>"$.billSeq",bill_id from fee where ma_no ='2100036942';
+select bill_id,ma_no,policy_no,endo_no,biz_type,bill_type,bill_details->>"$.commissionType",amount,bill_details->>"$.linkedBillIds[*]" from bill where ma_no = '2100036942';
