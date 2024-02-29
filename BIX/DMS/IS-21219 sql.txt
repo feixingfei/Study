@@ -128,23 +128,23 @@ SELECT
     (f.amount + ifnull((f1.amount),0)) as 'Appropriation Amount',
     if(f.endo_id is not null or f.declaration_no is not null, f.amount,0) as 'Endorsement ANP',
     'SC' as 'Commission Type',
-    b1.bill_ref_no as 'Commission Reference Number',
+    b1.bill_ref_no as 'Commission Reference Number(T1)',
     (
     	SELECT round(abs(ifnull((f2.amount),0))/abs(f.amount), 2) 
-    ) as 'Commission Rate',
-    (ifnull((f2.amount),0)) as 'Commission Amount',
-    b1.commission_status as 'Commission Status',
-    ' ' as 'Commission Rate Change Flag',
-    'OSC' as 'Commission Type',
-    b2.bill_ref_no as 'Commission Reference Number',
+    ) as 'Commission Rate(T1)',
+    (ifnull((f2.amount),0)) as 'Commission Amount(T1)',
+    b1.commission_status as 'Commission Status(T1)',
+    ' ' as 'Commission Rate Change Flag(T1)',
+    'OSC' as 'Commission Type(T2)',
+    b2.bill_ref_no as 'Commission Reference Number(T2)',
     b2.sc_code as 'Comm T2 Agent ID',
     b2.bill_details->>'$.commissionTags[0]' as 'Comm T2 Designation',
     '' as 'Comm T2 Channel',
     (SELECT round(abs(ifnull((f3.amount),0))/abs(f.amount), 2) ) as 'Comm T2 Comm Rate',
     ifnull((f3.amount),0) as 'Comm T2 Comm Amount',
 	b2.commission_status as 'Comm T2 Comm Status',
-    'OSC' as 'Commission Type',
-    b3.bill_ref_no as 'Commission Reference Number',
+    'OSC' as 'Commission Type(T3)',
+    b3.bill_ref_no as 'Commission Reference Number(T3)',
  	b3.sc_code as 'Comm T3 Agent ID',
     b3.bill_details->>'$.commissionTags[0]' as 'Comm T3 Designation',
     '' as 'Comm T3 Channel',
@@ -220,7 +220,7 @@ where f.fee_type = 'GWP'
                                '2100346112', '2100361226', '2100371606', '2100374205',
                                '2100384149', '2100393111', '2100418373', '2100475681','2100500018' ,
                                '2100502129' ,'2000508138' ,'2100494846' ,'2100588210' ,'2100493170' ,
-                               '2100504669' ,'2000365286' ,'2000457814' ,'2000371855') or
+                               '2100504669' ,'2000365286' ,'2000457814' ,'2000371855','2100036880') or
           f.ma_no in ('2100021307-02', '2100064946-04', '2100065372-03', '2100065658-03',
                                '2100066271-04', '2100088526-02', '2100124465-02', '2100129086-02',
                                '2100144010-02', '2100237707-02', '2100271487-01', '2100290928-04',
@@ -237,7 +237,7 @@ where f.fee_type = 'GWP'
                                '2100346112', '2100361226', '2100371606', '2100374205',
                                '2100384149', '2100393111', '2100418373', '2100475681','2100500018' ,
                                '2100502129' ,'2000508138' ,'2100494846' ,'2100588210' ,'2100493170' ,
-                               '2100504669' ,'2000365286' ,'2000457814' ,'2000371855') 
+                               '2100504669' ,'2000365286' ,'2000457814' ,'2000371855','2100036942') 
          );
 
 
