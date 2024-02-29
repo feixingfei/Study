@@ -69,6 +69,12 @@ select ma_no,policy_no,fee_type,biz_type,bill_id from fee where ma_no = "" or po
 
 # IS-20320
 SELECT  
+	(
+    	select case 
+    		when f.ma_no is not null then f.ma_no 
+    		else f.policy_no 
+    	end
+    ) as 'Policy Number',
     b.sc_code as 'Agent ID (T1)',
     b.bill_ref_no as 'Premium Reference Number',
     (
@@ -121,55 +127,106 @@ SELECT
     'LUMPSUM' as 'Payment frequency',
     f.amount as 'Modal Premium Amount',
     (f.amount + ifnull((
-    	select sum(ifnull(f1.amount,0)) from fee f1 where f1.fee_type='TURNOVER_TAX_ON_PREM' and f.product_code=f1.product_code 
-    		and f.coverage_code=f1.coverage_code and f.policy_no=f1.policy_no and f.endo_no=f1.endo_no and f.billing_schedule_id=f1.billing_schedule_id and f.fee_details->>"$.billSeq"=f1.fee_details->>"$.billSeq"
+    	select sum(ifnull(f1.amount,0)) from fee f1 where
+    		coalesce(f.ma_no,'1')=coalesce(f1.ma_no,'1') and coalesce(f.policy_no,'1')=coalesce(f1.policy_no,'1')and coalesce(f.endo_no,'1')=coalesce(f1.endo_no,'1')
+    		and f.biz_type = f1.biz_type and f.product_code=f1.product_code and coalesce(f.coverage_code,'1')=coalesce(f1.coverage_code,'1')
+    		and coalesce(f.billing_schedule_id,'1')=coalesce(f1.billing_schedule_id,'1')
+    		and coalesce(f.fee_details->>"$.billSeq",'1')=coalesce(f1.fee_details->>"$.billSeq",'1')
+    		and f1.fee_type='TURNOVER_TAX_ON_PREM'  
     ),0)) as 'Appropriation Amount',
     if(f.endo_id is not null or f.declaration_no is not null, f.amount,0) as 'Endorsement ANP',
+    'SC' as 'Commission Type',
     (SELECT commBill.bill_ref_no FROM bill commBill,json_table(b.bill_details, '$.linkedBillIds[*]' COLUMNS (billId varchar(50) path '$' )) a
      	where commBill.bill_id = (a.billId collate utf8mb4_unicode_ci) and commBill.bill_type = 'DIRECT_COMM' limit 1
     ) as 'Commission Reference Number',
-    (SELECT round(abs(commBill1.bill_details ->> '$.originalFeeAmount')/abs(b.bill_details ->> '$.originalFeeAmount'), 2) 
-    	FROM bill commBill1, json_table(b.bill_details, '$.linkedBillIds[*]' COLUMNS (billId varchar(50) path '$' )) a
-        where commBill1.bill_id = (a.billId collate utf8mb4_unicode_ci) and commBill1.bill_type = 'DIRECT_COMM' limit 1
+    (
+    	SELECT round(abs(
+    		ifnull((
+		    	select sum(ifnull(f1.amount,0)) from fee f1 where 
+		    		coalesce(f.ma_no,'1')=coalesce(f1.ma_no,'1') and coalesce(f.policy_no,'1')=coalesce(f1.policy_no,'1')and coalesce(f.endo_no,'1')=coalesce(f1.endo_no,'1')
+		    		and f.biz_type = f1.biz_type and f.product_code=f1.product_code and coalesce(f.coverage_code,'1')=coalesce(f1.coverage_code,'1')
+		    		and coalesce(f.billing_schedule_id,'1')=coalesce(f1.billing_schedule_id,'1')
+		    		and coalesce(f.fee_details->>"$.billSeq",'1')=coalesce(f1.fee_details->>"$.billSeq",'1')
+		    		and f1.fee_type='BASIC_COMM' 
+    		),0)
+    	)/abs(f.amount), 2) 
     ) as 'Commission Rate',
-    (SELECT commBill1.amount FROM bill commBill1,json_table(b.bill_details, '$.linkedBillIds[*]' COLUMNS (billId varchar(50) path '$')) a
-        where commBill1.bill_id = (a.billId collate utf8mb4_unicode_ci) and commBill1.bill_type = 'DIRECT_COMM' limit 1
+    (
+    	ifnull((
+		    	select sum(ifnull(f1.amount,0)) from fee f1 where
+		    		coalesce(f.ma_no,'1')=coalesce(f1.ma_no,'1') and coalesce(f.policy_no,'1')=coalesce(f1.policy_no,'1')and coalesce(f.endo_no,'1')=coalesce(f1.endo_no,'1')
+		    		and f.biz_type = f1.biz_type and f.product_code=f1.product_code and coalesce(f.coverage_code,'1')=coalesce(f1.coverage_code,'1')
+		    		and coalesce(f.billing_schedule_id,'1')=coalesce(f1.billing_schedule_id,'1')
+		    		and coalesce(f.fee_details->>"$.billSeq",'1')=coalesce(f1.fee_details->>"$.billSeq",'1')
+		    		and f1.fee_type='BASIC_COMM'
+    		),0)
     ) as 'Commission Amount',
     (SELECT commBill2.commission_status FROM bill commBill2,json_table(b.bill_details, '$.linkedBillIds[*]' COLUMNS (billId varchar(50) path '$' )) a
         where commBill2.bill_id = (a.billId collate utf8mb4_unicode_ci) and commBill2.bill_type = 'DIRECT_COMM' limit 1
     ) as 'Commission Status',
     ' ' as 'Commission Rate Change Flag',
-    'SC' as 'Commission Type',
+    'OSC' as 'Commission Type',
     (SELECT commBill3.sc_code FROM bill commBill3,json_table(b.bill_details, '$.linkedBillIds[*]' COLUMNS (billId varchar(50) path '$' )) a
       	where commBill3.bill_id = (a.billId collate utf8mb4_unicode_ci) and commBill3.bill_type = 'OR_COMM' and commBill3.bill_details ->> '$.commissionType' = 'TIER_2_OR_COMM' limit 1
     ) as 'Comm T2 Agent ID',
-    (SELECT commBill.bill_details ->> '$.commissionTags' FROM bill commBill,json_table(b.bill_details, '$.linkedBillIds[*]' COLUMNS (billId varchar(50) path '$' )) a
+    (SELECT commBill.bill_details->>'$.commissionTags[0]' FROM bill commBill,json_table(b.bill_details, '$.linkedBillIds[*]' COLUMNS (billId varchar(50) path '$' )) a
         where commBill.bill_id = (a.billId collate utf8mb4_unicode_ci) and commBill.bill_type = 'OR_COMM' and commBill.bill_details ->> '$.commissionType' = 'TIER_2_OR_COMM' limit 1
     ) as 'Comm T2 Designation',
     '' as 'Comm T2 Channel',
-    (SELECT round(abs(commBill.bill_details ->> '$.originalFeeAmount')/abs(b.bill_details ->> '$.originalFeeAmount'), 2)
-        FROM bill commBill,json_table(b.bill_details, '$.linkedBillIds[*]' COLUMNS (billId varchar(50) path '$' )) a
-        where commBill.bill_id = (a.billId collate utf8mb4_unicode_ci) and commBill.bill_type = 'OR_COMM' and commBill.bill_details ->> '$.commissionType' = 'TIER_2_OR_COMM' limit 1
+    (
+    	SELECT round(abs(
+    		ifnull((
+		    	select sum(ifnull(f1.amount,0)) from fee f1 where 
+		    		coalesce(f.ma_no,'1')=coalesce(f1.ma_no,'1') and coalesce(f.policy_no,'1')=coalesce(f1.policy_no,'1')and coalesce(f.endo_no,'1')=coalesce(f1.endo_no,'1')
+		    		and f.biz_type = f1.biz_type and f.product_code=f1.product_code and coalesce(f.coverage_code,'1')=coalesce(f1.coverage_code,'1')
+		    		and coalesce(f.billing_schedule_id,'1')=coalesce(f1.billing_schedule_id,'1')
+		    		and coalesce(f.fee_details->>"$.billSeq",'1')=coalesce(f1.fee_details->>"$.billSeq",'1')
+		    		and f1.fee_type='OR_COMM' and f1.fee_details->>"$.commissionType"='TIER_2_OR_COMM' 
+    		),0)
+    	)/abs(f.amount), 2) 
     ) as 'Comm T2 Comm Rate',
-    (SELECT commBill.amount FROM bill commBill,json_table(b.bill_details, '$.linkedBillIds[*]' COLUMNS (billId varchar(50) path '$' )) a
-        where commBill.bill_id = (a.billId collate utf8mb4_unicode_ci) and commBill.bill_type = 'OR_COMM' and commBill.bill_details ->> '$.commissionType' = 'TIER_2_OR_COMM' limit 1
+    (
+    	ifnull((
+		    	select sum(ifnull(f1.amount,0)) from fee f1 where
+		    		coalesce(f.ma_no,'1')=coalesce(f1.ma_no,'1') and coalesce(f.policy_no,'1')=coalesce(f1.policy_no,'1')and coalesce(f.endo_no,'1')=coalesce(f1.endo_no,'1')
+		    		and f.biz_type = f1.biz_type and f.product_code=f1.product_code and coalesce(f.coverage_code,'1')=coalesce(f1.coverage_code,'1')
+		    		and coalesce(f.billing_schedule_id,'1')=coalesce(f1.billing_schedule_id,'1')
+		    		and coalesce(f.fee_details->>"$.billSeq",'1')=coalesce(f1.fee_details->>"$.billSeq",'1')
+		    		and f1.fee_type='OR_COMM' and f1.fee_details->>"$.commissionType"='TIER_2_OR_COMM' 
+    		),0)
     ) as 'Comm T2 Comm Amount',
 	(SELECT commBill.commission_status FROM bill commBill, json_table(b.bill_details, '$.linkedBillIds[*]' COLUMNS (billId varchar(50) path '$' )) a
         where commBill.bill_id = (a.billId collate utf8mb4_unicode_ci) and commBill.bill_type = 'OR_COMM' and commBill.bill_details ->> '$.commissionType' = 'TIER_2_OR_COMM' limit 1
     ) as 'Comm T2 Comm Status',
+    'OSC' as 'Commission Type',
  	(SELECT commBill.sc_code FROM bill commBill, json_table(b.bill_details, '$.linkedBillIds[*]' COLUMNS (billId varchar(50) path '$' )) a
         where commBill.bill_id = (a.billId collate utf8mb4_unicode_ci) and commBill.bill_type = 'OR_COMM' and commBill.bill_details ->> '$.commissionType' = 'TIER_3_OR_COMM' limit 1
     ) as 'Comm T3 Agent ID',
-    (SELECT commBill.bill_details ->> '$.commissionTags' FROM bill commBill, json_table(b.bill_details, '$.linkedBillIds[*]' COLUMNS (billId varchar(50) path '$' )) a
+    (SELECT commBill.bill_details->>'$.commissionTags[0]' FROM bill commBill, json_table(b.bill_details, '$.linkedBillIds[*]' COLUMNS (billId varchar(50) path '$' )) a
         where commBill.bill_id = (a.billId collate utf8mb4_unicode_ci) and commBill.bill_type = 'OR_COMM' and commBill.bill_details ->> '$.commissionType' = 'TIER_3_OR_COMM' limit 1
     ) as 'Comm T3 Designation',
     '' as 'Comm T3 Channel',
-    (SELECT round(abs(commBill.bill_details ->> '$.originalFeeAmount')/abs(b.bill_details ->> '$.originalFeeAmount'), 2) 
-    	FROM bill commBill,json_table(b.bill_details, '$.linkedBillIds[*]' COLUMNS (billId varchar(50) path '$' )) a
-        where commBill.bill_id = (a.billId collate utf8mb4_unicode_ci) and commBill.bill_type = 'OR_COMM' and commBill.bill_details ->> '$.commissionType' = 'TIER_3_OR_COMM' limit 1
+    (
+    	SELECT round(abs(
+    		ifnull((
+		    	select sum(ifnull(f1.amount,0)) from fee f1 where 
+		    		coalesce(f.ma_no,'1')=coalesce(f1.ma_no,'1') and coalesce(f.policy_no,'1')=coalesce(f1.policy_no,'1')and coalesce(f.endo_no,'1')=coalesce(f1.endo_no,'1')
+		    		and f.biz_type = f1.biz_type and f.product_code=f1.product_code and coalesce(f.coverage_code,'1')=coalesce(f1.coverage_code,'1')
+		    		and coalesce(f.billing_schedule_id,'1')=coalesce(f1.billing_schedule_id,'1')
+		    		and coalesce(f.fee_details->>"$.billSeq",'1')=coalesce(f1.fee_details->>"$.billSeq",'1')
+		    		and f1.fee_type='OR_COMM' and f1.fee_details->>"$.commissionType"='TIER_3_OR_COMM' 
+    		),0)
+    	)/abs(f.amount), 2) 
     ) as 'Comm T3 Comm Rate',
-    (SELECT commBill.amount FROM bill commBill, json_table(b.bill_details, '$.linkedBillIds[*]' COLUMNS (billId varchar(50) path '$' )) a
-        where commBill.bill_id = (a.billId collate utf8mb4_unicode_ci) and commBill.bill_type = 'OR_COMM' and commBill.bill_details ->> '$.commissionType' = 'TIER_3_OR_COMM' limit 1
+    (
+    	ifnull((
+		    	select sum(ifnull(f1.amount,0)) from fee f1 where 
+		    		coalesce(f.ma_no,'1')=coalesce(f1.ma_no,'1') and coalesce(f.policy_no,'1')=coalesce(f1.policy_no,'1')and coalesce(f.endo_no,'1')=coalesce(f1.endo_no,'1')
+		    		and f.biz_type = f1.biz_type and f.product_code=f1.product_code and coalesce(f.coverage_code,'1')=coalesce(f1.coverage_code,'1')
+		    		and coalesce(f.billing_schedule_id,'1')=coalesce(f1.billing_schedule_id,'1')
+		    		and coalesce(f.fee_details->>"$.billSeq",'1')=coalesce(f1.fee_details->>"$.billSeq",'1')
+		    		and f1.fee_type='OR_COMM' and f1.fee_details->>"$.commissionType"='TIER_3_OR_COMM' 
+    		),0)
     ) as 'Comm T3 Comm Amount',
     (SELECT commBill.commission_status FROM bill commBill, json_table(b.bill_details, '$.linkedBillIds[*]' COLUMNS (billId varchar(50) path '$' )) a
         where commBill.bill_id = (a.billId collate utf8mb4_unicode_ci) and commBill.bill_type = 'OR_COMM' and commBill.bill_details ->> '$.commissionType' = 'TIER_3_OR_COMM' limit 1
