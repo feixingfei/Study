@@ -158,17 +158,27 @@ left join fee gstFee on
 	and coalesce(gwpFee.fee_details->>"$.billSeq",'1')=coalesce(gstFee.fee_details->>"$.billSeq",'1')
 	and gstFee.fee_type='TURNOVER_TAX_ON_PREM'
 left join bill commBill on 
-	coalesce(commFee.ma_no,'1')=coalesce(commBill.ma_no,'1') and coalesce(commFee.policy_no,'1')=coalesce(commBill.policy_no,'1')and coalesce(commFee.endo_no,'1')=coalesce(commBill.endo_no,'1')
-	and coalesce(commFee.declaration_no,'1')=coalesce(commBill.declaration_no,'1') and coalesce(commFee.life_policy_renewal_id,'1')=coalesce(commBill.life_policy_renewal_id,'1')
+	commfee.biz_type = commbill.biz_type
+	and (
+		select case
+			when commfee.ma_id is not null then coalesce(commFee.declaration_no,'1')=coalesce(commBill.declaration_no,'1')
+			when commfee.life_policy_renewal_id is not null then coalesce(commFee.life_policy_renewal_id,'1')=coalesce(commBill.life_policy_renewal_id,'1')
+			else coalesce(commFee.policy_no,'1')=coalesce(commBill.policy_no,'1')and coalesce(commFee.endo_no,'1')=coalesce(commBill.endo_no,'1')
+		end
+	)
 	and coalesce(commFee.billing_schedule_id,'1')=coalesce(commBill.billing_schedule_id,'1')
-	and coalesce(commFee.fee_details->>"$.billSeq",'1')=coalesce(commBill.bill_details->>"$.billSeq",'1')
 	and commBill.bill_type = if (commFee.fee_type='BASIC_COMM','DIRECT_COMM','OR_COMM')
 	and if(commfee.fee_type='BASIC_COMM',true,coalesce(commBill.bill_details->>"$.commissionType",'1')=coalesce(commFee.fee_details->>"$.commissionType",'1'))
 left join bill premBill on
-	coalesce(commFee.ma_no,'1')=coalesce(premBill.ma_no,'1') and coalesce(commFee.policy_no,'1')=coalesce(premBill.policy_no,'1')and coalesce(commFee.endo_no,'1')=coalesce(premBill.endo_no,'1')
-	and coalesce(commFee.declaration_no,'1')=coalesce(premBill.declaration_no,'1') and coalesce(commFee.life_policy_renewal_id,'1')=coalesce(premBill.life_policy_renewal_id,'1')
-	and coalesce(commFee.billing_schedule_id,'1')=coalesce(premBill.billing_schedule_id,'1')
-	and coalesce(commFee.fee_details->>"$.billSeq",'1')=coalesce(premBill.bill_details->>"$.billSeq",'1')
+	gwpFee.biz_type = premBill.biz_type
+	and (
+		select case
+			when gwpFee.ma_id is not null then coalesce(gwpFee.declaration_no,'1')=coalesce(premBill.declaration_no,'1')
+			when gwpFee.life_policy_renewal_id is not null then coalesce(gwpFee.life_policy_renewal_id,'1')=coalesce(premBill.life_policy_renewal_id,'1')
+			else coalesce(gwpFee.policy_no,'1')=coalesce(premBill.policy_no,'1')and coalesce(gwpFee.endo_no,'1')=coalesce(premBill.endo_no,'1')
+		end
+	)
+	and coalesce(gwpFee.billing_schedule_id,'1')=coalesce(premBill.billing_schedule_id,'1')
 	and premBill.bill_type = 'DIRECT_COMM'
 where commFee.fee_type in ('BASIC_COMM','OR_COMM')
 	and (commFee.policy_no in ("2100021307-02" ,"2100064946-04" ,"2100065372-03" ,"2100065658-03" ,"2100066271-04" ,
@@ -198,50 +208,7 @@ where commFee.fee_type in ('BASIC_COMM','OR_COMM')
 						,"2100500018" ,"2100502129" ,"2000508138" ,"2100494846" ,"2100588210" ,"2100493170" ,
 						"2100504669" ,"2000365286" ,"2000457814" ,"2000371855" ) 
          );
-
-
-select ma_no,policy_no,endo_no,biz_type,fee_type,fee_details->>"$.commissionType",amount,product_code,coverage_code,billing_schedule_id,fee_details->>"$.billSeq",bill_id from fee where ma_no ='2100036942';
-select bill_id,ma_no,policy_no,endo_no,biz_type,bill_type,bill_details->>"$.commissionType",amount,bill_details->>"$.linkedBillIds[*]" from bill where ma_no = '2100036942';
-
-
-SELECT   
-	b.bill_type,
-    b.bill_ref_no,  
-    b.balance,
-    b.status,
-    b1.bill_type,  
-    b1.bill_ref_no ,
-    b1.commission_status,
-    b2.bill_type 'OR Comm 2',  
-    b2.bill_ref_no ,
-    b2.commission_status,
-    b3.bill_type 'OR Comm 3',  
-    b3.bill_ref_no ,
-    b3.commission_status
-FROM
-    bill b  
-left JOIN bill b1 ON 
-	b1.bill_id = b.bill_details->>'$.linkedBillIds[0]'
-	and b1.bill_type = 'DIRECT_COMM'
-left join bill b2 on
-	b2.bill_id = b.bill_details->>'$.linkedBillIds[1]'
-	and b2.bill_type = 'OR_COMM'
-	and b2.bill_details->>'$.commissionType'='TIER_2_OR_COMM'
-left join bill b3 on
-	b3.bill_id = b.bill_details->>'$.linkedBillIds[2]'
-	and b3.bill_type = 'OR_COMM'
-	and b3.bill_details->>'$.commissionType'='TIER_3_OR_COMM'
-WHERE
-    b.bill_type = 'DIRECT_PREM' and b.bill_ref_no in (
-    	"CN3000013024" ,"CN3000021287" ,"CN3000021312" ,"CN3000026319" ,
-		"DN3000029799" ,"CN3000028831" ,"CN3000031477" ,"DN3000032363" ,
-		"DN3000041760"
-	);
-
-   select cs.settle_date,bill.sc_code,bill_type,bill_ref_no,commission_status from bill, commission_settle cs  where bill.commission_settle_id =cs.settle_id and bill.commission_status ='PAID';
-
-
-select cs.settle_date,b.sc_code,b.ma_no,b.policy_no,b.bill_type,b.bill_ref_no,b.commission_status from bill b 
-left join commission_settle cs on
-	b.commission_settle_id =cs.settle_id
-where b.commission_status ='PAID' and b.sc_code in ('514729','525161','68108G')
+         
+        
+select ma_no,policy_no,endo_no,biz_type,fee_type,fee_details->>"$.commissionType",amount,product_code,coverage_code,billing_schedule_id,fee_details->>"$.billSeq",bill_id from fee where policy_no ='2000012557';
+select bill_id,ma_no,declaration_no,policy_no,endo_no,life_policy_renewal_id,biz_type,bill_type,bill_details->>"$.commissionType",amount,bill_details->>"$.linkedBillIds" from bill where policy_no = '2000012557';
