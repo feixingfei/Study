@@ -214,3 +214,36 @@ where commFee.fee_type in ('BASIC_COMM','OR_COMM')
         
 select ma_no,policy_no,endo_no,biz_type,fee_type,fee_details->>"$.commissionType",amount,product_code,coverage_code,billing_schedule_id,fee_details->>"$.billSeq",bill_id from fee where policy_no ='2000012557';
 select bill_id,ma_no,declaration_no,policy_no,endo_no,life_policy_renewal_id,biz_type,bill_type,bill_details->>"$.commissionType",amount,bill_details->>"$.linkedBillIds" from bill where policy_no = '2000012557';
+
+
+select
+	cs.settle_date 'commissionPaidDate',
+	b.sc_code,
+	b.ma_no,
+	b.policy_no,
+	(
+		select case 
+			when b.bill_type = 'DIRECT_COMM' then 'SC'
+			when b.bill_type = 'OR_COMM' then 'OSC'
+		end
+	) 'commissionType',
+	b.bill_ref_no 'commissionBillNo',
+	b.amount 'commissionBillAmount',
+	b.commission_status,
+	g.dr_seg5 'commissionFundType',
+	b1.bill_ref_no 'premiumBillNo',
+	b1.amount 'premiumBillAmount',
+	b1.created_at 'premiumBillCreatedDate'
+from
+	bill b
+left join fee f on
+	f.bill_id = b.bill_id 
+left join gl_entry_split g on
+	g.fee_no = f.fee_no 
+left join commission_settle cs on
+	b.commission_settle_id = cs.settle_id
+left join bill b1 on
+	b1.bill_id = b.bill_details->>'$.linkedBillIds[0]'
+where
+	b.bill_type in ('DIRECT_COMM','OR_COMM')
+	and b.sc_code in ('514729','525161','68108G');  
