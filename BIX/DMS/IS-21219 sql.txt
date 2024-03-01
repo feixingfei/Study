@@ -160,11 +160,15 @@ left join fee gstFee on
 left join bill commBill on 
 	coalesce(commFee.ma_no,'1')=coalesce(commBill.ma_no,'1') and coalesce(commFee.policy_no,'1')=coalesce(commBill.policy_no,'1')and coalesce(commFee.endo_no,'1')=coalesce(commBill.endo_no,'1')
 	and coalesce(commFee.declaration_no,'1')=coalesce(commBill.declaration_no,'1') and coalesce(commFee.life_policy_renewal_id,'1')=coalesce(commBill.life_policy_renewal_id,'1')
+	and coalesce(commFee.billing_schedule_id,'1')=coalesce(commBill.billing_schedule_id,'1')
+	and coalesce(commFee.fee_details->>"$.billSeq",'1')=coalesce(commBill.bill_details->>"$.billSeq",'1')
 	and commBill.bill_type = if (commFee.fee_type='BASIC_COMM','DIRECT_COMM','OR_COMM')
 	and if(commfee.fee_type='BASIC_COMM',true,coalesce(commBill.bill_details->>"$.commissionType",'1')=coalesce(commFee.fee_details->>"$.commissionType",'1'))
 left join bill premBill on
 	coalesce(commFee.ma_no,'1')=coalesce(premBill.ma_no,'1') and coalesce(commFee.policy_no,'1')=coalesce(premBill.policy_no,'1')and coalesce(commFee.endo_no,'1')=coalesce(premBill.endo_no,'1')
 	and coalesce(commFee.declaration_no,'1')=coalesce(premBill.declaration_no,'1') and coalesce(commFee.life_policy_renewal_id,'1')=coalesce(premBill.life_policy_renewal_id,'1')
+	and coalesce(commFee.billing_schedule_id,'1')=coalesce(premBill.billing_schedule_id,'1')
+	and coalesce(commFee.fee_details->>"$.billSeq",'1')=coalesce(premBill.bill_details->>"$.billSeq",'1')
 	and premBill.bill_type = 'DIRECT_COMM'
 where commFee.fee_type in ('BASIC_COMM','OR_COMM')
 	and (commFee.policy_no in ("2100021307-02" ,"2100064946-04" ,"2100065372-03" ,"2100065658-03" ,"2100066271-04" ,
