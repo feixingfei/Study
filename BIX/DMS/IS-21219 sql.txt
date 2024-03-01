@@ -252,24 +252,20 @@ SELECT
     b3.commission_status
 FROM
     bill b  
-JOIN bill b1 ON 
+left JOIN bill b1 ON 
 	b1.bill_id = b.bill_details->>'$.linkedBillIds[0]'
 	and b1.bill_type = 'DIRECT_COMM'
-join bill b2 on
+left join bill b2 on
 	b2.bill_id = b.bill_details->>'$.linkedBillIds[1]'
 	and b2.bill_type = 'OR_COMM'
 	and b2.bill_details->>'$.commissionType'='TIER_2_OR_COMM'
-join bill b3 on
+left join bill b3 on
 	b3.bill_id = b.bill_details->>'$.linkedBillIds[2]'
 	and b3.bill_type = 'OR_COMM'
 	and b3.bill_details->>'$.commissionType'='TIER_3_OR_COMM'
 WHERE
     b.bill_type = 'DIRECT_PREM' and b.bill_ref_no in (
-    	"CN3000013024" ,"CN3000013024" ,"CN3000013024" ,"CN3000013024" ,"CN3000013024" ,
-		"CN3000013024" ,"CN3000013024" ,"CN3000013024" ,"CN3000013024" ,"CN3000013024" ,
-		"CN3000013024" ,"CN3000013024" ,"CN3000021287" ,"CN3000021312" ,"CN3000021312" ,
-		"CN3000026319" ,"CN3000026319" ,"DN3000029799" ,"CN3000028831" ,"CN3000031477" ,
-		"DN3000032363" ,"DN3000032363" ,"CN3000031477" ,"DN3000032363" ,"DN3000032363" ,
-		"CN3000031477" ,"CN3000031477" ,"DN3000032363" ,"CN3000013024" ,"CN3000013024" ,
+    	"CN3000013024" ,"CN3000021287" ,"CN3000021312" ,"CN3000026319" ,
+		"DN3000029799" ,"CN3000028831" ,"CN3000031477" ,"DN3000032363" ,
 		"DN3000041760"
 	);
