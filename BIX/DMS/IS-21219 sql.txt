@@ -68,6 +68,8 @@ select ma_no,policy_no,fee_type,biz_type,bill_id from fee where ma_no = "" or po
 
 
 # IS-20320
+use `bixdb_prd`;
+
 select 
 	(
     	select case 
@@ -179,7 +181,7 @@ left join bill premBill on
 		end
 	)
 	and coalesce(gwpFee.billing_schedule_id,'1')=coalesce(premBill.billing_schedule_id,'1')
-	and premBill.bill_type = 'DIRECT_COMM'
+	and premBill.bill_type = 'DIRECT_PREM'
 where commFee.fee_type in ('BASIC_COMM','OR_COMM')
 	and (commFee.policy_no in ("2100021307-02" ,"2100064946-04" ,"2100065372-03" ,"2100065658-03" ,"2100066271-04" ,
 							"2100088526-02" ,"2100124465-02" ,"2100129086-02" ,"2100144010-02" ,"2100237707-02" ,
