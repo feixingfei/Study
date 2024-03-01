@@ -271,3 +271,9 @@ WHERE
 	);
 
    select cs.settle_date,bill.sc_code,bill_type,bill_ref_no,commission_status from bill, commission_settle cs  where bill.commission_settle_id =cs.settle_id and bill.commission_status ='PAID';
+
+
+select cs.settle_date,b.sc_code,b.ma_no,b.policy_no,b.bill_type,b.bill_ref_no,b.commission_status from bill b 
+left join commission_settle cs on
+	b.commission_settle_id =cs.settle_id
+where b.commission_status ='PAID' and b.sc_code in ('514729','525161','68108G')
