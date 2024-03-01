@@ -181,31 +181,19 @@ left join fee f4 on
 	and coalesce(f.billing_schedule_id,'1')=coalesce(f4.billing_schedule_id,'1')
 	and coalesce(f.fee_details->>"$.billSeq",'1')=coalesce(f4.fee_details->>"$.billSeq",'1')
 	and f4.fee_type='OR_COMM' and f4.fee_details->>"$.commissionType"='TIER_3_OR_COMM' 
-join bill b ON  
+left join bill b ON  
     b.bill_id = f.bill_id
 left join bill b1 on
-	JSON_LENGTH(b.bill_details->'$.linkedBillIds') > 0
+	b.bill_id = b.bill_details->>'$.linkedBillIds[0]'
 	and b1.bill_type = 'DIRECT_COMM'
-	and exists (
-		select '1' from JSON_TABLE(b.bill_details,'$.linkedBillIds[*]' COLUMNS (billId varchar(50) path '$' )) a 
-			where b1.bill_id = (a.billId collate utf8mb4_unicode_ci)
-	)
 left join bill b2 on
-	JSON_LENGTH(b.bill_details->'$.linkedBillIds') > 0
+	b2.bill_id = b.bill_details->>'$.linkedBillIds[1]'
 	and b2.bill_type = 'OR_COMM'
 	and b2.bill_details->>'$.commissionType'='TIER_2_OR_COMM'
-	and exists (
-		select '1' from JSON_TABLE(b.bill_details,'$.linkedBillIds[*]' COLUMNS (billId varchar(50) path '$' )) a 
-			where b2.bill_id = (a.billId collate utf8mb4_unicode_ci)
-	)
 left join bill b3 on
-	JSON_LENGTH(b.bill_details->'$.linkedBillIds') > 0
+	b3.bill_id = b.bill_details->>'$.linkedBillIds[2]'
 	and b3.bill_type = 'OR_COMM'
 	and b3.bill_details->>'$.commissionType'='TIER_3_OR_COMM'
-	and exists (
-		select '1' from JSON_TABLE(b.bill_details,'$.linkedBillIds[*]' COLUMNS (billId varchar(50) path '$' )) a 
-			where b3.bill_id = (a.billId collate utf8mb4_unicode_ci)
-	)
 where f.fee_type = 'GWP'  
     and (f.policy_no in ('2100021307-02', '2100064946-04', '2100065372-03', '2100065658-03',
                                '2100066271-04', '2100088526-02', '2100124465-02', '2100129086-02',
@@ -246,3 +234,37 @@ where f.fee_type = 'GWP'
 
 select ma_no,policy_no,endo_no,biz_type,fee_type,fee_details->>"$.commissionType",amount,product_code,coverage_code,billing_schedule_id,fee_details->>"$.billSeq",bill_id from fee where ma_no ='2100036942';
 select bill_id,ma_no,policy_no,endo_no,biz_type,bill_type,bill_details->>"$.commissionType",amount,bill_details->>"$.linkedBillIds[*]" from bill where ma_no = '2100036942';
+
+
+SELECT   
+	b.bill_type,
+    b.bill_ref_no,  
+    b.balance,
+    b.status,
+    b1.bill_type,  
+    b1.bill_ref_no ,
+    b1.commission_status,
+    b2.bill_type 'OR Comm 2',  
+    b2.bill_ref_no ,
+    b2.commission_status,
+    b3.bill_type 'OR Comm 3',  
+    b3.bill_ref_no ,
+    b3.commission_status
+FROM
+    bill b  
+JOIN bill b1 ON 
+	b1.bill_id = b.bill_details->>'$.linkedBillIds[0]'
+	and b1.bill_type = 'DIRECT_COMM'
+	and b1.commission_status = 'PENDING'
+join bill b2 on
+	b2.bill_id = b.bill_details->>'$.linkedBillIds[1]'
+	and b2.bill_type = 'OR_COMM'
+	and b2.bill_details->>'$.commissionType'='TIER_2_OR_COMM'
+	and b2.commission_status = 'PENDING'
+join bill b3 on
+	b3.bill_id = b.bill_details->>'$.linkedBillIds[2]'
+	and b3.bill_type = 'OR_COMM'
+	and b3.bill_details->>'$.commissionType'='TIER_3_OR_COMM'
+	and b2.commission_status = 'PENDING'
+WHERE
+    b.bill_type = 'DIRECT_PREM' and b.balance = 0;
