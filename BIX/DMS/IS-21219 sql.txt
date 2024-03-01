@@ -269,3 +269,5 @@ WHERE
 		"DN3000029799" ,"CN3000028831" ,"CN3000031477" ,"DN3000032363" ,
 		"DN3000041760"
 	);
+
+   select cs.settle_date,bill.sc_code,bill_type,bill_ref_no,commission_status from bill, commission_settle cs  where bill.commission_settle_id =cs.settle_id and bill.commission_status ='PAID';
