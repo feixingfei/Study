@@ -68,8 +68,6 @@ select ma_no,policy_no,fee_type,biz_type,bill_id from fee where ma_no = "" or po
 
 
 # IS-20320
-use `bixdb_prd`;
-
 select 
 	(
     	select case 
@@ -77,7 +75,7 @@ select
     		else gwpFee.policy_no 
     	end
     ) as 'Policy Number',
-    premBill.sc_code as 'Agent ID (T1)',
+    premBill.sc_code as 'Agent ID',
     premBill.bill_ref_no as 'Premium Reference Number',
     (
     	select case 
@@ -136,6 +134,9 @@ select
 		end
 	) as 'Commission Type',
     commBill.bill_ref_no as 'Commission Reference Number',
+    commbill.sc_code as 'Comm Agent ID',
+    if(commBill.bill_details->>'$.commissionTags[0]'='null','',commBill.bill_details->>'$.commissionTags[0]') as 'Comm Designation',
+    '' as 'Comm Channel',
     (
     	SELECT round(abs(ifnull((commFee.amount),0))/abs(gwpFee.amount), 2) 
     ) as 'Commission Rate',
@@ -160,8 +161,7 @@ left join fee gstFee on
 	and coalesce(gwpFee.fee_details->>"$.billSeq",'1')=coalesce(gstFee.fee_details->>"$.billSeq",'1')
 	and gstFee.fee_type='TURNOVER_TAX_ON_PREM'
 left join bill commBill on 
-	commfee.biz_type = commbill.biz_type
-	and (
+	(
 		select case
 			when commfee.ma_id is not null then coalesce(commFee.declaration_no,'1')=coalesce(commBill.declaration_no,'1')
 			when commfee.life_policy_renewal_id is not null then coalesce(commFee.life_policy_renewal_id,'1')=coalesce(commBill.life_policy_renewal_id,'1')
@@ -172,8 +172,7 @@ left join bill commBill on
 	and commBill.bill_type = if (commFee.fee_type='BASIC_COMM','DIRECT_COMM','OR_COMM')
 	and if(commfee.fee_type='BASIC_COMM',true,coalesce(commBill.bill_details->>"$.commissionType",'1')=coalesce(commFee.fee_details->>"$.commissionType",'1'))
 left join bill premBill on
-	gwpFee.biz_type = premBill.biz_type
-	and (
+	(
 		select case
 			when gwpFee.ma_id is not null then coalesce(gwpFee.declaration_no,'1')=coalesce(premBill.declaration_no,'1')
 			when gwpFee.life_policy_renewal_id is not null then coalesce(gwpFee.life_policy_renewal_id,'1')=coalesce(premBill.life_policy_renewal_id,'1')
