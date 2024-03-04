@@ -216,8 +216,7 @@ select bill_id,ma_no,declaration_no,policy_no,endo_no,life_policy_renewal_id,biz
 
 
 select
-	b.sc_code as 'AGENTCD',
-	if(b.bill_details->>'$.commissionTags[0]'='null','',b.bill_details->>'$.commissionTags[0]') as 'DESIGNATIONCD',
+	distinct b.sc_code as 'AGENTCD',
 	(
     	select case 
     		when b.ma_no is not null then b.ma_no 
@@ -249,7 +248,7 @@ select
 			)
 			when JSON_EXTRACT(fee_details->>'$.jsonGLAttributes','$.parNonPar')='NON_PAR' then '03'
 			else ''
-		end
+	end
 	) as 'Funds',
 	cs.settle_date 'BIX Paid Date'
 from
@@ -272,4 +271,3 @@ left join fee f on
 where
 	b.bill_type in ('DIRECT_COMM','OR_COMM')
 	and b.sc_code in ('514729','525161','68108G')
-order by b.sc_code,b.ma_no,b.policy_no;
