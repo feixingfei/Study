@@ -216,33 +216,50 @@ select bill_id,ma_no,declaration_no,policy_no,endo_no,life_policy_renewal_id,biz
 
 
 select
-	cs.settle_date 'commissionPaidDate',
-	b.sc_code,
-	b.ma_no,
-	b.policy_no,
+	b.sc_code as 'AGENTCD',
+	if(b.bill_details->>'$.commissionTags[0]'='null','',b.bill_details->>'$.commissionTags[0]') as 'DESIGNATIONCD',
+	(
+    	select case 
+    		when b.ma_no is not null then b.ma_no 
+    		else b.policy_no 
+    	end
+    ) as 'POLICYNUM',
+    b1.bill_ref_no 'PREMIUMREFNO',
+    (select case
+    	when b.bill_details->>'$.productCate' = 'EB' or b.life_policy_renewal_id is not null then concat('GROUP',b.bill_details->>'$.productCode')
+    	else concat('GENERAL',b.bill_details->>'$.productCode')
+    end) as 'PRODUCTCD',
+    b.bill_ref_no 'COMMISSIONREFNO',
+    b.amount 'Commission Amount',
+    b.commission_status 'COMMISSIONSTATUS',
 	(
 		select case 
 			when b.bill_type = 'DIRECT_COMM' then 'SC'
 			when b.bill_type = 'OR_COMM' then 'OSC'
 		end
-	) 'commissionType',
-	b.bill_ref_no 'commissionBillNo',
-	b.amount 'commissionBillAmount',
-	b.commission_status,
-	g.dr_seg5 'commissionFundType',
-	b1.bill_ref_no 'premiumBillNo',
-	b1.amount 'premiumBillAmount',
-	b1.created_at 'premiumBillCreatedDate'
+	) 'COMMISSIONBASETYPECD',
+	b.created_at as 'COMMISSIONDATE',
+	g.dr_seg5 as 'Funds',
+	cs.settle_date 'BIX Paid Date'
 from
 	bill b
-left join fee f on
-	f.bill_id = b.bill_id 
-left join gl_entry_split g on
-	g.fee_no = f.fee_no 
-left join commission_settle cs on
-	b.commission_settle_id = cs.settle_id
 left join bill b1 on
 	b1.bill_id = b.bill_details->>'$.linkedBillIds[0]'
+left join commission_settle cs on
+	b.commission_settle_id = cs.settle_id
+left join fee f on
+	(
+		select case
+			when b.ma_id is not null then coalesce(b.declaration_no,'1')=coalesce(f.declaration_no,'1')
+			when b.life_policy_renewal_id is not null then coalesce(b.life_policy_renewal_id,'1')=coalesce(f.life_policy_renewal_id,'1')
+			else coalesce(b.policy_no,'1')=coalesce(f.policy_no,'1')and coalesce(b.endo_no,'1')=coalesce(f.endo_no,'1')
+		end
+	)
+	and coalesce(b.billing_schedule_id,'1')=coalesce(f.billing_schedule_id,'1')
+	and f.fee_type = if (b.bill_type='DIRECT_COMM','BASIC_COMM','OR_COMM')
+	and if(b.bill_type='DIRECT_COMM',true,coalesce(b.bill_details->>"$.commissionType",'1')=coalesce(f.fee_details->>"$.commissionType",'1'))
+left join gl_entry_split g on
+	g.fee_no = f.fee_no 
 where
 	b.bill_type in ('DIRECT_COMM','OR_COMM')
-	and b.sc_code in ('514729','525161','68108G');  
+	and b.sc_code in ('514729','525161','68108G');   
