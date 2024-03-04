@@ -239,7 +239,18 @@ select
 		end
 	) 'COMMISSIONBASETYPECD',
 	b.created_at as 'COMMISSIONDATE',
-	g.dr_seg5 as 'Funds',
+	(
+		select case 
+			when JSON_EXTRACT(fee_details->>'$.jsonGLAttributes','$.lifeOrGI')='GI' then (
+				select case
+					when JSON_EXTRACT(fee_details->>'$.jsonGLAttributes','$.fundType')='SIF' then '05'
+					else '06'
+				end
+			)
+			when JSON_EXTRACT(fee_details->>'$.jsonGLAttributes','$.parNonPar')='NON_PAR' then '03'
+			else ''
+		end
+	) as 'Funds',
 	cs.settle_date 'BIX Paid Date'
 from
 	bill b
@@ -258,8 +269,7 @@ left join fee f on
 	and coalesce(b.billing_schedule_id,'1')=coalesce(f.billing_schedule_id,'1')
 	and f.fee_type = if (b.bill_type='DIRECT_COMM','BASIC_COMM','OR_COMM')
 	and if(b.bill_type='DIRECT_COMM',true,coalesce(b.bill_details->>"$.commissionType",'1')=coalesce(f.fee_details->>"$.commissionType",'1'))
-left join gl_entry_split g on
-	g.fee_no = f.fee_no 
 where
 	b.bill_type in ('DIRECT_COMM','OR_COMM')
-	and b.sc_code in ('514729','525161','68108G');   
+	and b.sc_code in ('514729','525161','68108G')
+order by b.sc_code,b.ma_no,b.policy_no;
