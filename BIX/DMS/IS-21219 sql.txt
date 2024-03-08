@@ -270,4 +270,68 @@ left join fee f on
 	and if(b.bill_type='DIRECT_COMM',true,coalesce(b.bill_details->>"$.commissionType",'1')=coalesce(f.fee_details->>"$.commissionType",'1'))
 where
 	b.bill_type in ('DIRECT_COMM','OR_COMM')
-	and b.sc_code in ('514729','525161','68108G')
+	and b.sc_code in ('514729','525161','68108G');
+
+select
+	distinct b.sc_code as 'AGENTCD',
+	(
+    	select case 
+    		when b.ma_no is not null then b.ma_no 
+    		else b.policy_no 
+    	end
+    ) as 'POLICYNUM',
+    b1.bill_ref_no 'PREMIUMREFNO',
+    (select case
+    	when b.bill_details->>'$.productCate' = 'EB' or b.life_policy_renewal_id is not null then concat('GROUP',b.bill_details->>'$.productCode')
+    	else concat('GENERAL',b.bill_details->>'$.productCode')
+    end) as 'PRODUCTCD',
+    b.bill_ref_no 'COMMISSIONREFNO',
+    b.amount 'Commission Amount',
+    b.commission_status 'COMMISSIONSTATUS',
+    b.bill_details->>'$.commissionSubStatus' 'COMMISSIONSUBSTATUS',
+    b.commission_settle_id,
+	(
+		select case 
+			when b.bill_type = 'DIRECT_COMM' then 'SC'
+			when b.bill_type = 'OR_COMM' then 'OSC'
+		end
+	) 'COMMISSIONBASETYPECD',
+	b.created_at as 'COMMISSIONDATE',
+	(
+		select case 
+			when JSON_EXTRACT(fee_details->>'$.jsonGLAttributes','$.lifeOrGI')='GI' then (
+				select case
+					when JSON_EXTRACT(fee_details->>'$.jsonGLAttributes','$.fundType')='SIF' then '05'
+					else '06'
+				end
+			)
+			when JSON_EXTRACT(fee_details->>'$.jsonGLAttributes','$.parNonPar')='NON_PAR' then '03'
+			else ''
+	end
+	) as 'Funds',
+	cs.settle_date 'BIX Paid Date'
+from
+	bill b
+left join bill b1 on
+	b1.bill_id = b.bill_details->>'$.linkedBillIds[0]'
+left join commission_settle cs on
+	b.commission_settle_id = cs.settle_id
+left join fee f on
+	(
+		select case
+			when b.ma_id is not null then coalesce(b.declaration_no,'1')=coalesce(f.declaration_no,'1')
+			when b.life_policy_renewal_id is not null then coalesce(b.life_policy_renewal_id,'1')=coalesce(f.life_policy_renewal_id,'1')
+			else coalesce(b.policy_no,'1')=coalesce(f.policy_no,'1')and coalesce(b.endo_no,'1')=coalesce(f.endo_no,'1')
+		end
+	)
+	and coalesce(b.billing_schedule_id,'1')=coalesce(f.billing_schedule_id,'1')
+	and f.fee_type = if (b.bill_type='DIRECT_COMM','BASIC_COMM','OR_COMM')
+	and if(b.bill_type='DIRECT_COMM',true,coalesce(b.bill_details->>"$.commissionType",'1')=coalesce(f.fee_details->>"$.commissionType",'1'))
+where
+	b.bill_type in ('DIRECT_COMM','OR_COMM')
+	and b.sc_code in ('100008','350008','110110','700008')
+	and b.commission_status = 'PAID';
+	
+select distinct sc_code from bill where commission_status = 'PAID' and commission_settle_id is null;
+
+select * from commission_settle where settle_id = '1ed29461b68b667c94f0233910fa0aeec092a4';
