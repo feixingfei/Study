@@ -344,8 +344,8 @@ create table tmp_topic_dmcommission_backup_sign as
 select * from topic_dmcommission;
 
 -- patch data
-update topic_dmcommission c
-join (  
+UPDATE topic_dmcommission c  
+JOIN (  
     select
 		c.primarykey,
 		c.commissiontype,
@@ -362,8 +362,14 @@ join (
 		c.primarykey = f.fee_id
 	join topic_bill b on 
 		c.commissionrefno = b.billrefno
-) amt on c.primarykey = amt.primarykey and (c.commissionamt!=amt.commissionamt or c.dncnanp!=amt.dncnanp)
-set c.dncnanp = amt.dncnanp,c.commissionamt = amt.commissionamt,c.update_time_ = now();
+) amt ON c.primarykey = amt.primarykey  
+SET   
+    c.dncnanp = amt.dncnanp,  
+    c.commissionamt = amt.commissionamt,  
+    c.update_time_ = NOW()  
+WHERE   
+    c.commissionamt != amt.commissionamt OR   
+    c.dncnanp != amt.dncnanp;
 
 -- roll back data
 REPLACE INTO topic_dmcommission  
