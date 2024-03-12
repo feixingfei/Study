@@ -48,33 +48,67 @@ create table tmp_topic_dmcommission_backup_sign as
 select * from topic_dmcommission;
 
 -- patch data
-UPDATE topic_dmcommission c  
-JOIN (  
-    select
-		c.primarykey,
-		c.commissiontype,
-		(
-			select case 
-				when c.commissiontype = 'PC' then b.premiumbilloriginalfeeamount 
-				else f.samecovergwp
-			end
-		) as dncnanp,
-		f.amount as commissionamt
-	from
-		topic_dmcommission c
-	join topic_fee f on
-		c.primarykey = f.fee_id
-	join topic_bill b on 
-		c.commissionrefno = b.billrefno
-	order by c.primarykey limit 0,10000
-) amt ON c.primarykey = amt.primarykey  
-SET   
-    c.dncnanp = amt.dncnanp,  
-    c.commissionamt = amt.commissionamt,  
-    c.update_time_ = NOW()  
-WHERE   
-    c.commissionamt != amt.commissionamt OR   
-    c.dncnanp != amt.dncnanp;
+# 1
+DROP PROCEDURE IF EXISTS UpdateTopicDmCommission;
+
+CREATE PROCEDURE watchmen_incometest_data_db.UpdateTopicDmCommission()
+begin
+	CREATE TEMPORARY TABLE IF NOT EXISTS tmp_update_keys (  
+	    primarykey varchar(100) PRIMARY KEY
+	);  
+
+	-- 假设我们每次更新10条记录  
+	SET @offset = 0;  
+	SET @limit = 5000; 
+	
+	select count(*) into @totalCount from topic_dmcommission;
+
+	while @offset < @totalCount do
+		truncate table tmp_update_keys;
+		
+		PREPARE stmt FROM "
+			INSERT INTO tmp_update_keys (primarykey)  
+			SELECT c.primarykey FROM topic_dmcommission c order by c.primarykey limit ?,?
+		";  
+		EXECUTE stmt USING @offset, @limit; 
+		DEALLOCATE PREPARE stmt;
+	
+		UPDATE topic_dmcommission c  
+	    JOIN tmp_update_keys uk ON c.primarykey = uk.primarykey  
+	    JOIN (  
+		    select
+				c.primarykey,
+				c.commissiontype,
+				(
+					select case 
+						when c.commissiontype = 'PC' then b.premiumbilloriginalfeeamount 
+						else f.samecovergwp
+					end
+				) as dncnanp,
+				f.amount as commissionamt
+			from
+				topic_dmcommission c
+			join topic_fee f on
+				c.primarykey = f.fee_id
+			join topic_bill b on 
+				c.commissionrefno = b.billrefno
+		) amt ON c.primarykey = amt.primarykey  
+		SET   
+		    c.dncnanp = amt.dncnanp,  
+		    c.commissionamt = amt.commissionamt,  
+		    c.update_time_ = NOW();
+	
+	    SET @offset = @offset + @limit; 
+	   
+	   	commit;
+	end while;
+	  
+	-- 删除临时表（如果需要）  
+	DROP TEMPORARY TABLE IF EXISTS tmp_update_keys;
+end
+
+# 2
+CALL UpdateTopicDmCommission();
 
 -- roll back data
 REPLACE INTO topic_dmcommission  
@@ -102,3 +136,4 @@ select * from (
 	join topic_bill b on 
 		c.commissionrefno = b.billrefno
 ) a where a.dncnanp1!=a.dncnanp;
+
