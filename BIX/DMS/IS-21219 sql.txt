@@ -368,3 +368,23 @@ set c.dncnanp = amt.dncnanp,c.commissionamt = amt.commissionamt,c.update_time_ =
 -- roll back data
 REPLACE INTO topic_dmcommission  
 SELECT * FROM tmp_topic_dmcommission_backup_sign;
+	
+-- check data
+select
+	c.primarykey,
+	c.commissiontype,
+	(
+		select case 
+			when c.commissiontype = 'PC' then b.premiumbilloriginalfeeamount 
+			else f.samecovergwp
+		end
+	) as dncnanp,
+	f.amount as commissionamt,
+	c.dncnanp,
+	c.commissionamt
+from
+	topic_dmcommission c
+join topic_fee f on
+	c.primarykey = f.fee_id
+join topic_bill b on 
+	c.commissionrefno = b.billrefno;
