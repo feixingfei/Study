@@ -38,3 +38,67 @@
 "2000407743" ,"2000423087" ,"2000436084" ,"2000457814" ,"2100672402" ,"2100568190-01" ,
 "2100514469" ,"2100536661-01" ,"2100517844" ,"2100357017-01" ,"2100493223" ,"2100123575-01" ,
 "2000518965" ,"2000439521" ,"2100491247"
+
+
+-- backup data
+# 1
+drop table if exists tmp_topic_dmcommission_backup_sign;
+# 2
+create table tmp_topic_dmcommission_backup_sign as 
+select * from topic_dmcommission;
+
+-- patch data
+UPDATE topic_dmcommission c  
+JOIN (  
+    select
+		c.primarykey,
+		c.commissiontype,
+		(
+			select case 
+				when c.commissiontype = 'PC' then b.premiumbilloriginalfeeamount 
+				else f.samecovergwp
+			end
+		) as dncnanp,
+		f.amount as commissionamt
+	from
+		topic_dmcommission c
+	join topic_fee f on
+		c.primarykey = f.fee_id
+	join topic_bill b on 
+		c.commissionrefno = b.billrefno
+	order by c.primarykey limit 0,10000
+) amt ON c.primarykey = amt.primarykey  
+SET   
+    c.dncnanp = amt.dncnanp,  
+    c.commissionamt = amt.commissionamt,  
+    c.update_time_ = NOW()  
+WHERE   
+    c.commissionamt != amt.commissionamt OR   
+    c.dncnanp != amt.dncnanp;
+
+-- roll back data
+REPLACE INTO topic_dmcommission  
+SELECT * FROM tmp_topic_dmcommission_backup_sign;
+	
+-- check data
+select * from (
+	select
+		c.primarykey,
+		c.policynum,
+		c.commissiontype,
+		(
+			select case 
+				when c.commissiontype = 'PC' then b.premiumbilloriginalfeeamount 
+				else f.samecovergwp
+			end
+		) as dncnanp1,
+		f.amount as commissionamt1,
+		c.dncnanp,
+		c.commissionamt
+	from
+		topic_dmcommission c
+	join topic_fee f on
+		c.primarykey = f.fee_id
+	join topic_bill b on 
+		c.commissionrefno = b.billrefno
+) a where a.dncnanp1!=a.dncnanp;
