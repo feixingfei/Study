@@ -362,7 +362,7 @@ join (
 		c.primarykey = f.fee_id
 	join topic_bill b on 
 		c.commissionrefno = b.billrefno
-) amt on c.primarykey = amt.primarykey
+) amt on c.primarykey = amt.primarykey and (c.commissionamt!=amt.commissionamt or c.dncnanp!=amt.dncnanp)
 set c.dncnanp = amt.dncnanp,c.commissionamt = amt.commissionamt,c.update_time_ = now();
 
 -- roll back data
@@ -372,6 +372,7 @@ SELECT * FROM tmp_topic_dmcommission_backup_sign;
 -- check data
 select
 	c.primarykey,
+	c.policynum,
 	c.commissiontype,
 	(
 		select case 
