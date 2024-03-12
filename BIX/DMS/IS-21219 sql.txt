@@ -335,3 +335,36 @@ where
 select distinct sc_code from bill where commission_status = 'PAID' and commission_settle_id is null;
 
 select * from commission_settle where settle_id = '1ed29461b68b667c94f0233910fa0aeec092a4';
+
+-- backup data
+# 1
+drop table if exists tmp_topic_dmcommission_backup_sign;
+# 2
+create table tmp_topic_dmcommission_backup_sign as 
+select * from topic_dmcommission;
+
+-- patch data
+update topic_dmcommission c
+join (  
+    select
+		c.primarykey,
+		c.commissiontype,
+		(
+			select case 
+				when c.commissiontype = 'PC' then b.premiumbilloriginalfeeamount 
+				else f.samecovergwp
+			end
+		) as dncnanp,
+		f.amount as commissionamt
+	from
+		topic_dmcommission c
+	join topic_fee f on
+		c.primarykey = f.fee_id
+	join topic_bill b on 
+		c.commissionrefno = b.billrefno
+) amt on c.primarykey = amt.primarykey
+set c.dncnanp = amt.dncnanp,c.commissionamt = amt.commissionamt,c.update_time_ = now();
+
+-- roll back data
+REPLACE INTO topic_dmcommission  
+SELECT * FROM tmp_topic_dmcommission_backup_sign;
