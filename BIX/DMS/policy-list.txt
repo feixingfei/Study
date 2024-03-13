@@ -40,6 +40,37 @@
 "2000518965" ,"2000439521" ,"2100491247"
 
 
+-- 删除patched Fee对应数据
+/*backup*/
+drop table if exists tmp_dm_sn6_premium_backup;
+create table tmp_dm_sn6_premium_backup as 
+select * from topic_dmpremium td where primarykey in (
+	select fee_id from topic_fee where reversedfeeid is not null or fee_id in (select distinct reversedfeeid from topic_fee)
+);
+
+drop table if exists tmp_dm_sn6_commission_backup;
+create table tmp_dm_sn6_commission_backup as 
+select * from topic_dmcommission td where primarykey in (
+	select fee_id from topic_fee where reversedfeeid is not null or fee_id in (select distinct reversedfeeid from topic_fee)
+);
+
+/*patch*/
+delete from topic_dmpremium td where primarykey in (
+	select fee_id from topic_fee where reversedfeeid is not null or fee_id in (select distinct reversedfeeid from topic_fee)
+);
+
+delete from topic_dmcommission td where primarykey in (
+	select fee_id from topic_fee where reversedfeeid is not null or fee_id in (select distinct reversedfeeid from topic_fee)
+);
+
+/*rollback*/
+REPLACE INTO topic_dmcommission
+select * from tmp_dm_sn6_commission_backup tmp;
+
+REPLACE INTO topic_dmpremium
+select * from tmp_dm_sn6_premium_backup tmp;
+
+-- 更正dmcommission表dncnanp、commissionamt的正负号，更新SC记录的commissionrate
 -- backup data
 # 1
 drop table if exists tmp_topic_dmcommission_backup_sign;
@@ -75,6 +106,10 @@ SET
 WHERE   
     c.commissionamt != amt.commissionamt OR   
     c.dncnanp != amt.dncnanp;
+   
+update topic_dmcommission  
+set commissionrate = ROUND(ABS(commissionamt) / NULLIF(ABS(dncnanp), 0), 2)
+where commissiontype = 'SC';
 
 -- roll back data
 REPLACE INTO topic_dmcommission  
@@ -94,11 +129,21 @@ select * from (
 		) as dncnanp1,
 		f.amount as commissionamt1,
 		c.dncnanp,
-		c.commissionamt
+		c.commissionamt,
+		c.commissionrate
 	from
 		topic_dmcommission c
 	join topic_fee f on
 		c.primarykey = f.fee_id
 	join topic_bill b on 
 		c.premiumreferencenum = b.billrefno
-) a where a.dncnanp1!=a.dncnanp and a.dncnanp*a.commissionamt < 0;
+) a where a.dncnanp1!=a.dncnanp or a.dncnanp*a.commissionamt < 0;
+
+select policy_no,coverage_code,samecovergwp,amount from topic_fee where fee_type = 'BASIC_COMM' and samecovergwp*amount < 0;
+select policy_no,declaration_no,endo_no,ispatched,billrefno ,fee_type,coverage_code,samecovergwp,amount,billing_schedule_id  from topic_fee where fee_type = 'GWP' and policy_no = '2000101308';
+
+select * from topic_fee where fee_type = 'GWP' and policy_no = '2000101308';
+
+select fee_id,ispatched,isreversalrecord,reversedfeeid from topic_fee where reversedfeeid is not null or fee_id in (select distinct reversedfeeid from topic_fee);
+
+
