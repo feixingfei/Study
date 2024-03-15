@@ -40,6 +40,65 @@
 "2000518965" ,"2000439521" ,"2100491247"
 
 
+-- backup data
+# 1
+drop table if exists tmp_topic_dmcommission_backup_sign;
+# 2
+create table tmp_topic_dmcommission_backup_sign as 
+select * from topic_dmcommission where dncnanp*commissionamt < 0 and commissiontype != 'PC';
+
+-- patch data
+UPDATE topic_dmcommission c  
+left JOIN (  
+    select
+		c.primarykey,
+		p.dncnanp
+	from
+		topic_dmcommission c
+	join topic_dmpremium p on 
+		c.premiumreferencenum = p.premiumreferencenum
+		and c.subtrancheno = p.subtrancheno
+	join topic_bill b on
+		c.premiumreferencenum  = b.billrefno
+	where c.commissiontype != 'PC'
+) amt ON c.primarykey = amt.primarykey  
+SET   
+    c.dncnanp = amt.dncnanp,
+    c.update_time_ = NOW()  
+WHERE   
+    c.dncnanp*c.commissionamt < 0
+	and c.commissiontype != 'PC';
+   
+-- roll back data
+REPLACE INTO topic_dmcommission  
+SELECT * FROM tmp_topic_dmcommission_backup_sign;
+	
+-- check data
+select
+	c.primarykey,
+	c.policynum,
+	c.premiumreferencenum,
+	c.dncnanp,
+	c.commissiontype,
+	c.commissionamt,
+	c.commissionrate,
+	c.subtrancheno,
+	c.update_time_,
+	p.appropriationtypecd,
+	p.dncnanp,
+	p.update_time_,
+	b.originalfeeamount*b.drcr
+from
+	topic_dmcommission c
+join topic_dmpremium p on 
+	c.premiumreferencenum = p.premiumreferencenum
+	and c.subtrancheno = p.subtrancheno
+join topic_bill b on
+	c.premiumreferencenum  = b.billrefno
+where c.dncnanp*c.commissionamt < 0 
+order by c.update_time_ desc,c.policynum,c.premiumreferencenum,c.commissiontype,c.subtrancheno;
+
+
 -- 删除patched Fee对应数据
 /*backup*/
 drop table if exists tmp_dm_sn6_premium_backup;
