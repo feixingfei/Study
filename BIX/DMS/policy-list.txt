@@ -42,9 +42,9 @@
 
 -- backup data
 # 1
-drop table if exists tmp_topic_dmcommission_backup_sign;
+drop table if exists tmp_topic_dmcommission_backup_sign_gstAdj;
 # 2
-create table tmp_topic_dmcommission_backup_sign as 
+create table tmp_topic_dmcommission_backup_sign_gstAdj as 
 select * from topic_dmcommission where dncnanp*commissionamt < 0 and commissiontype != 'PC';
 
 -- patch data
@@ -71,7 +71,7 @@ WHERE
    
 -- roll back data
 REPLACE INTO topic_dmcommission  
-SELECT * FROM tmp_topic_dmcommission_backup_sign;
+SELECT * FROM tmp_topic_dmcommission_backup_sign_gstAdj;
 	
 -- check data
 select
@@ -84,6 +84,7 @@ select
 	c.commissionrate,
 	c.subtrancheno,
 	c.update_time_,
+    p.reftranno,
 	p.appropriationtypecd,
 	p.dncnanp,
 	p.update_time_,
