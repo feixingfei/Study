@@ -12,23 +12,21 @@
     }
 
     {
-        "msgDetails":{
-            "svcVersion":"1.0",
-            "msgUID":"commissionDMS001",
-            "reqDateTime":"2024-04-25T10:38:00.525+08:00",
-            "reClientId":"BIX"
+        "msgDetails": {
+            "svcVersion": "1.0",
+            "msgUID": "commissionDMS001",
+            "reqDateTime": "2024-04-25T10:38:00.525+08:00",
+            "reClientId": "BIX"
         },
-        "getCommissionRateReq":{
-            {
-              "appCode":"BIX",
-              "agentCode":"700008",
-              "lob":"GENERAL",
-              "productCode":"CLL",
-              "coverageCode":"CLL",
-              "schemeCode":null,
-              "renewalFlag":"N",
-              "submissionDate":"2024-04-25"
-            }
+        "getCommissionRateReq": {
+            "appCode": "BIX",
+            "agentCode": "700008",
+            "lob": "GENERAL",
+            "productCode": "CLL",
+            "coverageCode": "CLL",
+            "schemeCode": null,
+            "renewalFlag": "N",
+            "submissionDate": "2024-04-25"
         }
     }
     
