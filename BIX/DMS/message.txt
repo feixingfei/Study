@@ -1,0 +1,17 @@
+    get-dms-comm-rate-url: http://osb.sit.income.org.sg:51053/api/soa/agent_dms/new/getCommissionRate POST
+
+    {
+      "appCode":"BIX",
+      "agentCode":"700008",
+      "lob":"GENERAL",
+      "productCode":"CLL",
+      "coverageCode":"CLL",
+      "schemeCode":null,
+      "renewalFlag":"N",
+      "submissionDate":"2024-04-25"
+    }
+    
+    update-dms-comm-status-url: http://10.22.24.8:51051/dms-service/dms/updateCommissionStatus POST
+
+    
+    
