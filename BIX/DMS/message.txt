@@ -29,7 +29,11 @@
             "submissionDate": "2024-04-25"
         }
     }
-    
+
+Please change to http://10.22.24.8:52051/dms-service/dms/getCommissionRate.
+
+The UAT will be http://10.22.8.87:51051/dms-service/dms/getCommissionRate once ready.
+
     update-dms-comm-status-url: http://10.22.24.8:51051/dms-service/dms/updateCommissionStatus POST
 
     
