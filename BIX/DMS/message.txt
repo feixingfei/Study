@@ -38,3 +38,5 @@ The UAT will be http://10.22.8.87:51051/dms-service/dms/getCommissionRate once r
 
     
     
+    get-dms-comm-rate-url: http://osb.uat.income.org.sg:51056/api/soa/agent_dms/new/getCommissionRate
+    update-dms-comm-status-url: http://10.22.24.8:51051/dms-service/dms/updateCommissionStatus
